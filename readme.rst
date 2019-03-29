@@ -1,6 +1,6 @@
-.. image:: ./images/leanr2clean.png
+.. image:: ./docs/images/leanr2clean.png
 
-Learn2Clean: Optimizing the Sequence of Tasks for Data Preparation and Data Cleaning
+**Learn2Clean: Optimizing the Sequence of Tasks for Data Preparation and Data Cleaning**
 
 |License|
 
@@ -8,10 +8,10 @@ Learn2Clean: Optimizing the Sequence of Tasks for Data Preparation and Data Clea
 
 Learn2Clean is a Python library for data preprocessing and cleaning based on Q-Learning, a model-free reinforcement learning technique. It selects, for a given dataset, a ML model, and a quality performance metric, the optimal sequence of tasks for prepraring the data such that the quality of the ML model result is maximized. 
 
-You can try it for data preparation before clustering, regression, and classification on real-world data.
+You can try it for composing your own data preprocessing pipelines or for automizing data preparation before clustering, regression, and classification.
 
 
-.. image:: ./images/figure_Learn2Clean.jpeg
+.. image:: ./docs/images/figure_Learn2Clean.jpeg
 
 
 **For more details**, please refer to the paper presented at the Web Conf 2019:
