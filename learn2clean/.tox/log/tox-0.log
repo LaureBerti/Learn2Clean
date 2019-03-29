@@ -1,0 +1,8 @@
+actionid: tox
+msg: packaging
+cmdargs: '/Users/Laure/anaconda3/anaconda3/bin/python /Users/Laure/home/Aberti/Experiments/Scripts/python/learn2clean/setup.py sdist --formats=zip --dist-dir /Users/Laure/home/Aberti/Experiments/Scripts/python/learn2clean/.tox/dist'
+
+Traceback (most recent call last):
+  File "setup.py", line 46, in <module>
+    with open('README.rst') as readme_file:
+FileNotFoundError: [Errno 2] No such file or directory: 'README.rst'
