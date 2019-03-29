@@ -1,8 +1,8 @@
-# Learn2Clean
+.. image:: ./images/leanr2clean.png
+
 Learn2Clean: Optimizing the Sequence of Tasks for Data Preparation and Data Cleaning
 
-
-|Documentation Status| |PyPI version| |Build Status| |GitHub Issues| |codecov| |License|
+|License|
 
 -----------------------
 
@@ -11,7 +11,7 @@ Learn2Clean is a Python library for data preprocessing and cleaning based on Q-L
 You can try it for data preparation before clustering, regression, and classification on real-world data.
 
 
-.. image:: ./docs/images/figure_Learn2Clean.jpeg
+.. image:: ./images/figure_Learn2Clean.jpeg
 
 
 **For more details**, please refer to the paper presented at the Web Conf 2019:
@@ -33,15 +33,5 @@ Learn2Clean is a research prototype. Your help is very valuable to make it bette
 
 For more details, please refer to `CONTRIBUTING <https://github.com/LaureBerti/Learn2Clean/blob/master/docs/contributing.rst>`__.
 
-.. |Documentation Status| image:: https://readthedocs.org/projects/mlbox/badge/?version=latest
-   :target: https://mlbox.readthedocs.io/en/latest/
-.. |PyPI version| image:: https://badge.fury.io/py/mlbox.svg
-   :target: https://pypi.python.org/pypi/mlbox
-.. |Build Status| image:: https://travis-ci.org/LaureBerti/Learn2Clean.svg?branch=master
-   :target: https://travis-ci.org/LaureBerti/Learn2Clean
-.. |GitHub Issues| image:: https://img.shields.io/github/issues/LaureBerti/Learn2Clean.svg
-   :target: https://github.com/LaureBerti/Learn2Clean/issues
-.. |codecov| image:: https://codecov.io/gh/LaureBerti/Learn2Clean/branch/master/graph/badge.svg
-   :target: https://codecov.io/gh/LaureBerti/Learn2Clean
 .. |License| image:: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg
    :target: https://github.com/LaureBerti/Learn2Clean/blob/master/LICENSE
