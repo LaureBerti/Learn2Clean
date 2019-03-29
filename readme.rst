@@ -1,4 +1,4 @@
-.. image:: ./docs/images/leanr2clean.png
+.. image:: ./docs/images/learn2clean.png
 
 **Learn2Clean: Optimizing the Sequence of Tasks for Data Preparation and Data Cleaning**
 
