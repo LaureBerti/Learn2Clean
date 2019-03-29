@@ -1,0 +1,45 @@
+{
+    "creation_metadata": {
+        "local_time": "2019-03-26 18:18:49",
+        "utc_time": "2019-03-26 17:17:49",
+        "creator": "TDDA 1.0.13",
+        "host": "LaureBertis-MacBook-Pro.local",
+        "user": "Laure",
+        "n_records": 64295,
+        "n_selected": 64295
+    },
+    "fields": {
+        "App": {
+            "type": "string",
+            "min_length": 3,
+            "max_length": 142,
+            "max_nulls": 0
+        },
+        "Translated_Review": {
+            "type": "string",
+            "min_length": 2,
+            "max_length": 2737
+        },
+        "Sentiment": {
+            "type": "string",
+            "min_length": 7,
+            "max_length": 8,
+            "allowed_values": [
+                "Negative",
+                "Neutral",
+                "Positive"
+            ]
+        },
+        "Sentiment_Polarity": {
+            "type": "real",
+            "min": -1.0,
+            "max": 1.0
+        },
+        "Sentiment_Subjectivity": {
+            "type": "real",
+            "min": 0.0,
+            "max": 1.0,
+            "sign": "non-negative"
+        }
+    }
+}

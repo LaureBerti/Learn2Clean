@@ -1,0 +1,6 @@
+col;num;pattern
+Sex;0;'^[a-m]{2,3}$'
+Sex;1;'^[a-z]{4,6}$'
+Embarked;0;'^[Q|S]$'
+Embarked;1;'^[Q|S]$'
+Embarked;2;'^[Z|S]$'

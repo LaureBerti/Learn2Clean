@@ -1,0 +1,2 @@
+col;num;pattern
+SaleCondition;0;'^[A-Za-z]{5,6}$'

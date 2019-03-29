@@ -1,0 +1,4 @@
+col;num;pattern
+MSZoning;0;'^RM$'
+MSZoning;1;'^RL$'
+SaleCondition;0;'^[A-Za-z]{5,6}$'

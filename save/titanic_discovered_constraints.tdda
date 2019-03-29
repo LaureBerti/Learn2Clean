@@ -1,0 +1,100 @@
+{
+    "creation_metadata": {
+        "local_time": "2019-03-28 09:09:46",
+        "utc_time": "2019-03-28 08:08:46",
+        "creator": "TDDA 1.0.13",
+        "host": "LaureBertis-MacBook-Pro.local",
+        "user": "Laure",
+        "n_records": 891,
+        "n_selected": 891
+    },
+    "fields": {
+        "PassengerId": {
+            "type": "int",
+            "min": 1,
+            "max": 891,
+            "sign": "positive",
+            "max_nulls": 0,
+            "no_duplicates": true
+        },
+        "Survived": {
+            "type": "int",
+            "min": 0,
+            "max": 1,
+            "sign": "non-negative",
+            "max_nulls": 0
+        },
+        "Pclass": {
+            "type": "int",
+            "min": 1,
+            "max": 3,
+            "sign": "positive",
+            "max_nulls": 0
+        },
+        "Name": {
+            "type": "string",
+            "min_length": 12,
+            "max_length": 82,
+            "max_nulls": 0,
+            "no_duplicates": true
+        },
+        "Sex": {
+            "type": "string",
+            "min_length": 4,
+            "max_length": 6,
+            "max_nulls": 0,
+            "allowed_values": [
+                "female",
+                "male"
+            ]
+        },
+        "Age": {
+            "type": "real",
+            "min": 0.42,
+            "max": 80.0,
+            "sign": "positive"
+        },
+        "SibSp": {
+            "type": "int",
+            "min": 0,
+            "max": 8,
+            "sign": "non-negative",
+            "max_nulls": 0
+        },
+        "Parch": {
+            "type": "int",
+            "min": 0,
+            "max": 6,
+            "sign": "non-negative",
+            "max_nulls": 0
+        },
+        "Ticket": {
+            "type": "string",
+            "min_length": 3,
+            "max_length": 18,
+            "max_nulls": 0
+        },
+        "Fare": {
+            "type": "real",
+            "min": 0.0,
+            "max": 512.3292,
+            "sign": "non-negative",
+            "max_nulls": 0
+        },
+        "Cabin": {
+            "type": "string",
+            "min_length": 1,
+            "max_length": 15
+        },
+        "Embarked": {
+            "type": "string",
+            "min_length": 1,
+            "max_length": 1,
+            "allowed_values": [
+                "C",
+                "Q",
+                "S"
+            ]
+        }
+    }
+}

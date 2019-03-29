@@ -1,0 +1,831 @@
+{
+    "creation_metadata": {
+        "local_time": "2019-03-28 11:11:59",
+        "utc_time": "2019-03-28 10:10:59",
+        "creator": "TDDA 1.0.13",
+        "host": "LaureBertis-MacBook-Pro.local",
+        "user": "Laure",
+        "n_records": 1460,
+        "n_selected": 1460
+    },
+    "fields": {
+        "Id": {
+            "type": "int",
+            "min": 1,
+            "max": 1460,
+            "sign": "positive",
+            "max_nulls": 0,
+            "no_duplicates": true
+        },
+        "MSSubClass": {
+            "type": "int",
+            "min": 20,
+            "max": 190,
+            "sign": "positive",
+            "max_nulls": 0
+        },
+        "MSZoning": {
+            "type": "string",
+            "min_length": 2,
+            "max_length": 7,
+            "max_nulls": 0,
+            "allowed_values": [
+                "C (all)",
+                "FV",
+                "RH",
+                "RL",
+                "RM"
+            ]
+        },
+        "LotFrontage": {
+            "type": "real",
+            "min": 21.0,
+            "max": 313.0,
+            "sign": "positive"
+        },
+        "LotArea": {
+            "type": "int",
+            "min": 1300,
+            "max": 215245,
+            "sign": "positive",
+            "max_nulls": 0
+        },
+        "Street": {
+            "type": "string",
+            "min_length": 4,
+            "max_length": 4,
+            "max_nulls": 0,
+            "allowed_values": [
+                "Grvl",
+                "Pave"
+            ]
+        },
+        "Alley": {
+            "type": "string",
+            "min_length": 4,
+            "max_length": 4,
+            "allowed_values": [
+                "Grvl",
+                "Pave"
+            ]
+        },
+        "LotShape": {
+            "type": "string",
+            "min_length": 3,
+            "max_length": 3,
+            "max_nulls": 0,
+            "allowed_values": [
+                "IR1",
+                "IR2",
+                "IR3",
+                "Reg"
+            ]
+        },
+        "LandContour": {
+            "type": "string",
+            "min_length": 3,
+            "max_length": 3,
+            "max_nulls": 0,
+            "allowed_values": [
+                "Bnk",
+                "HLS",
+                "Low",
+                "Lvl"
+            ]
+        },
+        "Utilities": {
+            "type": "string",
+            "min_length": 6,
+            "max_length": 6,
+            "max_nulls": 0,
+            "allowed_values": [
+                "AllPub",
+                "NoSeWa"
+            ]
+        },
+        "LotConfig": {
+            "type": "string",
+            "min_length": 3,
+            "max_length": 7,
+            "max_nulls": 0,
+            "allowed_values": [
+                "Corner",
+                "CulDSac",
+                "FR2",
+                "FR3",
+                "Inside"
+            ]
+        },
+        "LandSlope": {
+            "type": "string",
+            "min_length": 3,
+            "max_length": 3,
+            "max_nulls": 0,
+            "allowed_values": [
+                "Gtl",
+                "Mod",
+                "Sev"
+            ]
+        },
+        "Neighborhood": {
+            "type": "string",
+            "min_length": 5,
+            "max_length": 7,
+            "max_nulls": 0
+        },
+        "Condition1": {
+            "type": "string",
+            "min_length": 4,
+            "max_length": 6,
+            "max_nulls": 0,
+            "allowed_values": [
+                "Artery",
+                "Feedr",
+                "Norm",
+                "PosA",
+                "PosN",
+                "RRAe",
+                "RRAn",
+                "RRNe",
+                "RRNn"
+            ]
+        },
+        "Condition2": {
+            "type": "string",
+            "min_length": 4,
+            "max_length": 6,
+            "max_nulls": 0,
+            "allowed_values": [
+                "Artery",
+                "Feedr",
+                "Norm",
+                "PosA",
+                "PosN",
+                "RRAe",
+                "RRAn",
+                "RRNn"
+            ]
+        },
+        "BldgType": {
+            "type": "string",
+            "min_length": 4,
+            "max_length": 6,
+            "max_nulls": 0,
+            "allowed_values": [
+                "1Fam",
+                "2fmCon",
+                "Duplex",
+                "Twnhs",
+                "TwnhsE"
+            ]
+        },
+        "HouseStyle": {
+            "type": "string",
+            "min_length": 4,
+            "max_length": 6,
+            "max_nulls": 0,
+            "allowed_values": [
+                "1.5Fin",
+                "1.5Unf",
+                "1Story",
+                "2.5Fin",
+                "2.5Unf",
+                "2Story",
+                "SFoyer",
+                "SLvl"
+            ]
+        },
+        "OverallQual": {
+            "type": "int",
+            "min": 1,
+            "max": 10,
+            "sign": "positive",
+            "max_nulls": 0
+        },
+        "OverallCond": {
+            "type": "int",
+            "min": 1,
+            "max": 9,
+            "sign": "positive",
+            "max_nulls": 0
+        },
+        "YearBuilt": {
+            "type": "int",
+            "min": 1872,
+            "max": 2010,
+            "sign": "positive",
+            "max_nulls": 0
+        },
+        "YearRemodAdd": {
+            "type": "int",
+            "min": 1950,
+            "max": 2010,
+            "sign": "positive",
+            "max_nulls": 0
+        },
+        "RoofStyle": {
+            "type": "string",
+            "min_length": 3,
+            "max_length": 7,
+            "max_nulls": 0,
+            "allowed_values": [
+                "Flat",
+                "Gable",
+                "Gambrel",
+                "Hip",
+                "Mansard",
+                "Shed"
+            ]
+        },
+        "RoofMatl": {
+            "type": "string",
+            "min_length": 4,
+            "max_length": 7,
+            "max_nulls": 0,
+            "allowed_values": [
+                "ClyTile",
+                "CompShg",
+                "Membran",
+                "Metal",
+                "Roll",
+                "Tar&Grv",
+                "WdShake",
+                "WdShngl"
+            ]
+        },
+        "Exterior1st": {
+            "type": "string",
+            "min_length": 5,
+            "max_length": 7,
+            "max_nulls": 0,
+            "allowed_values": [
+                "AsbShng",
+                "AsphShn",
+                "BrkComm",
+                "BrkFace",
+                "CBlock",
+                "CemntBd",
+                "HdBoard",
+                "ImStucc",
+                "MetalSd",
+                "Plywood",
+                "Stone",
+                "Stucco",
+                "VinylSd",
+                "Wd Sdng",
+                "WdShing"
+            ]
+        },
+        "Exterior2nd": {
+            "type": "string",
+            "min_length": 5,
+            "max_length": 7,
+            "max_nulls": 0,
+            "allowed_values": [
+                "AsbShng",
+                "AsphShn",
+                "Brk Cmn",
+                "BrkFace",
+                "CBlock",
+                "CmentBd",
+                "HdBoard",
+                "ImStucc",
+                "MetalSd",
+                "Other",
+                "Plywood",
+                "Stone",
+                "Stucco",
+                "VinylSd",
+                "Wd Sdng",
+                "Wd Shng"
+            ]
+        },
+        "MasVnrType": {
+            "type": "string",
+            "min_length": 4,
+            "max_length": 7,
+            "allowed_values": [
+                "BrkCmn",
+                "BrkFace",
+                "None",
+                "Stone"
+            ]
+        },
+        "MasVnrArea": {
+            "type": "real",
+            "min": 0.0,
+            "max": 1600.0,
+            "sign": "non-negative"
+        },
+        "ExterQual": {
+            "type": "string",
+            "min_length": 2,
+            "max_length": 2,
+            "max_nulls": 0,
+            "allowed_values": [
+                "Ex",
+                "Fa",
+                "Gd",
+                "TA"
+            ]
+        },
+        "ExterCond": {
+            "type": "string",
+            "min_length": 2,
+            "max_length": 2,
+            "max_nulls": 0,
+            "allowed_values": [
+                "Ex",
+                "Fa",
+                "Gd",
+                "Po",
+                "TA"
+            ]
+        },
+        "Foundation": {
+            "type": "string",
+            "min_length": 4,
+            "max_length": 6,
+            "max_nulls": 0,
+            "allowed_values": [
+                "BrkTil",
+                "CBlock",
+                "PConc",
+                "Slab",
+                "Stone",
+                "Wood"
+            ]
+        },
+        "BsmtQual": {
+            "type": "string",
+            "min_length": 2,
+            "max_length": 2,
+            "allowed_values": [
+                "Ex",
+                "Fa",
+                "Gd",
+                "TA"
+            ]
+        },
+        "BsmtCond": {
+            "type": "string",
+            "min_length": 2,
+            "max_length": 2,
+            "allowed_values": [
+                "Fa",
+                "Gd",
+                "Po",
+                "TA"
+            ]
+        },
+        "BsmtExposure": {
+            "type": "string",
+            "min_length": 2,
+            "max_length": 2,
+            "allowed_values": [
+                "Av",
+                "Gd",
+                "Mn",
+                "No"
+            ]
+        },
+        "BsmtFinType1": {
+            "type": "string",
+            "min_length": 3,
+            "max_length": 3,
+            "allowed_values": [
+                "ALQ",
+                "BLQ",
+                "GLQ",
+                "LwQ",
+                "Rec",
+                "Unf"
+            ]
+        },
+        "BsmtFinSF1": {
+            "type": "int",
+            "min": 0,
+            "max": 5644,
+            "sign": "non-negative",
+            "max_nulls": 0
+        },
+        "BsmtFinType2": {
+            "type": "string",
+            "min_length": 3,
+            "max_length": 3,
+            "allowed_values": [
+                "ALQ",
+                "BLQ",
+                "GLQ",
+                "LwQ",
+                "Rec",
+                "Unf"
+            ]
+        },
+        "BsmtFinSF2": {
+            "type": "int",
+            "min": 0,
+            "max": 1474,
+            "sign": "non-negative",
+            "max_nulls": 0
+        },
+        "BsmtUnfSF": {
+            "type": "int",
+            "min": 0,
+            "max": 2336,
+            "sign": "non-negative",
+            "max_nulls": 0
+        },
+        "TotalBsmtSF": {
+            "type": "int",
+            "min": 0,
+            "max": 6110,
+            "sign": "non-negative",
+            "max_nulls": 0
+        },
+        "Heating": {
+            "type": "string",
+            "min_length": 4,
+            "max_length": 5,
+            "max_nulls": 0,
+            "allowed_values": [
+                "Floor",
+                "GasA",
+                "GasW",
+                "Grav",
+                "OthW",
+                "Wall"
+            ]
+        },
+        "HeatingQC": {
+            "type": "string",
+            "min_length": 2,
+            "max_length": 2,
+            "max_nulls": 0,
+            "allowed_values": [
+                "Ex",
+                "Fa",
+                "Gd",
+                "Po",
+                "TA"
+            ]
+        },
+        "CentralAir": {
+            "type": "string",
+            "min_length": 1,
+            "max_length": 1,
+            "max_nulls": 0,
+            "allowed_values": [
+                "N",
+                "Y"
+            ]
+        },
+        "Electrical": {
+            "type": "string",
+            "min_length": 3,
+            "max_length": 5,
+            "max_nulls": 1,
+            "allowed_values": [
+                "FuseA",
+                "FuseF",
+                "FuseP",
+                "Mix",
+                "SBrkr"
+            ]
+        },
+        "1stFlrSF": {
+            "type": "int",
+            "min": 334,
+            "max": 4692,
+            "sign": "positive",
+            "max_nulls": 0
+        },
+        "2ndFlrSF": {
+            "type": "int",
+            "min": 0,
+            "max": 2065,
+            "sign": "non-negative",
+            "max_nulls": 0
+        },
+        "LowQualFinSF": {
+            "type": "int",
+            "min": 0,
+            "max": 572,
+            "sign": "non-negative",
+            "max_nulls": 0
+        },
+        "GrLivArea": {
+            "type": "int",
+            "min": 334,
+            "max": 5642,
+            "sign": "positive",
+            "max_nulls": 0
+        },
+        "BsmtFullBath": {
+            "type": "int",
+            "min": 0,
+            "max": 3,
+            "sign": "non-negative",
+            "max_nulls": 0
+        },
+        "BsmtHalfBath": {
+            "type": "int",
+            "min": 0,
+            "max": 2,
+            "sign": "non-negative",
+            "max_nulls": 0
+        },
+        "FullBath": {
+            "type": "int",
+            "min": 0,
+            "max": 3,
+            "sign": "non-negative",
+            "max_nulls": 0
+        },
+        "HalfBath": {
+            "type": "int",
+            "min": 0,
+            "max": 2,
+            "sign": "non-negative",
+            "max_nulls": 0
+        },
+        "BedroomAbvGr": {
+            "type": "int",
+            "min": 0,
+            "max": 8,
+            "sign": "non-negative",
+            "max_nulls": 0
+        },
+        "KitchenAbvGr": {
+            "type": "int",
+            "min": 0,
+            "max": 3,
+            "sign": "non-negative",
+            "max_nulls": 0
+        },
+        "KitchenQual": {
+            "type": "string",
+            "min_length": 2,
+            "max_length": 2,
+            "max_nulls": 0,
+            "allowed_values": [
+                "Ex",
+                "Fa",
+                "Gd",
+                "TA"
+            ]
+        },
+        "TotRmsAbvGrd": {
+            "type": "int",
+            "min": 2,
+            "max": 14,
+            "sign": "positive",
+            "max_nulls": 0
+        },
+        "Functional": {
+            "type": "string",
+            "min_length": 3,
+            "max_length": 4,
+            "max_nulls": 0,
+            "allowed_values": [
+                "Maj1",
+                "Maj2",
+                "Min1",
+                "Min2",
+                "Mod",
+                "Sev",
+                "Typ"
+            ]
+        },
+        "Fireplaces": {
+            "type": "int",
+            "min": 0,
+            "max": 3,
+            "sign": "non-negative",
+            "max_nulls": 0
+        },
+        "FireplaceQu": {
+            "type": "string",
+            "min_length": 2,
+            "max_length": 2,
+            "allowed_values": [
+                "Ex",
+                "Fa",
+                "Gd",
+                "Po",
+                "TA"
+            ]
+        },
+        "GarageType": {
+            "type": "string",
+            "min_length": 6,
+            "max_length": 7,
+            "allowed_values": [
+                "2Types",
+                "Attchd",
+                "Basment",
+                "BuiltIn",
+                "CarPort",
+                "Detchd"
+            ]
+        },
+        "GarageYrBlt": {
+            "type": "real",
+            "min": 1900.0,
+            "max": 2010.0,
+            "sign": "positive"
+        },
+        "GarageFinish": {
+            "type": "string",
+            "min_length": 3,
+            "max_length": 3,
+            "allowed_values": [
+                "Fin",
+                "RFn",
+                "Unf"
+            ]
+        },
+        "GarageCars": {
+            "type": "int",
+            "min": 0,
+            "max": 4,
+            "sign": "non-negative",
+            "max_nulls": 0
+        },
+        "GarageArea": {
+            "type": "int",
+            "min": 0,
+            "max": 1418,
+            "sign": "non-negative",
+            "max_nulls": 0
+        },
+        "GarageQual": {
+            "type": "string",
+            "min_length": 2,
+            "max_length": 2,
+            "allowed_values": [
+                "Ex",
+                "Fa",
+                "Gd",
+                "Po",
+                "TA"
+            ]
+        },
+        "GarageCond": {
+            "type": "string",
+            "min_length": 2,
+            "max_length": 2,
+            "allowed_values": [
+                "Ex",
+                "Fa",
+                "Gd",
+                "Po",
+                "TA"
+            ]
+        },
+        "PavedDrive": {
+            "type": "string",
+            "min_length": 1,
+            "max_length": 1,
+            "max_nulls": 0,
+            "allowed_values": [
+                "N",
+                "P",
+                "Y"
+            ]
+        },
+        "WoodDeckSF": {
+            "type": "int",
+            "min": 0,
+            "max": 857,
+            "sign": "non-negative",
+            "max_nulls": 0
+        },
+        "OpenPorchSF": {
+            "type": "int",
+            "min": 0,
+            "max": 547,
+            "sign": "non-negative",
+            "max_nulls": 0
+        },
+        "EnclosedPorch": {
+            "type": "int",
+            "min": 0,
+            "max": 552,
+            "sign": "non-negative",
+            "max_nulls": 0
+        },
+        "3SsnPorch": {
+            "type": "int",
+            "min": 0,
+            "max": 508,
+            "sign": "non-negative",
+            "max_nulls": 0
+        },
+        "ScreenPorch": {
+            "type": "int",
+            "min": 0,
+            "max": 480,
+            "sign": "non-negative",
+            "max_nulls": 0
+        },
+        "PoolArea": {
+            "type": "int",
+            "min": 0,
+            "max": 738,
+            "sign": "non-negative",
+            "max_nulls": 0
+        },
+        "PoolQC": {
+            "type": "string",
+            "min_length": 2,
+            "max_length": 2,
+            "allowed_values": [
+                "Ex",
+                "Fa",
+                "Gd"
+            ]
+        },
+        "Fence": {
+            "type": "string",
+            "min_length": 4,
+            "max_length": 5,
+            "allowed_values": [
+                "GdPrv",
+                "GdWo",
+                "MnPrv",
+                "MnWw"
+            ]
+        },
+        "MiscFeature": {
+            "type": "string",
+            "min_length": 4,
+            "max_length": 4,
+            "allowed_values": [
+                "Gar2",
+                "Othr",
+                "Shed",
+                "TenC"
+            ]
+        },
+        "MiscVal": {
+            "type": "int",
+            "min": 0,
+            "max": 15500,
+            "sign": "non-negative",
+            "max_nulls": 0
+        },
+        "MoSold": {
+            "type": "int",
+            "min": 1,
+            "max": 12,
+            "sign": "positive",
+            "max_nulls": 0
+        },
+        "YrSold": {
+            "type": "int",
+            "min": 2006,
+            "max": 2010,
+            "sign": "positive",
+            "max_nulls": 0
+        },
+        "SaleType": {
+            "type": "string",
+            "min_length": 2,
+            "max_length": 5,
+            "max_nulls": 0,
+            "allowed_values": [
+                "COD",
+                "CWD",
+                "Con",
+                "ConLD",
+                "ConLI",
+                "ConLw",
+                "New",
+                "Oth",
+                "WD"
+            ]
+        },
+        "SaleCondition": {
+            "type": "string",
+            "min_length": 6,
+            "max_length": 7,
+            "max_nulls": 0,
+            "allowed_values": [
+                "Abnorml",
+                "AdjLand",
+                "Alloca",
+                "Family",
+                "Normal",
+                "Partial"
+            ]
+        },
+        "SalePrice": {
+            "type": "int",
+            "min": 34900,
+            "max": 755000,
+            "sign": "positive",
+            "max_nulls": 0
+        }
+    }
+}

@@ -1,0 +1,40 @@
+{
+    "creation_metadata": {
+        "local_time": "2019-03-08 17:17:32",
+        "utc_time": "2019-03-08 16:16:32",
+        "creator": "TDDA 1.0.13",
+        "host": "example.local",
+        "user": "Laure Berti-Equille",
+        "n_records": 1460,
+        "n_selected": 1460
+    },
+    "fields": {
+        "YearBuilt": {
+            "type": "int",
+            "max_nulls": 0
+        },
+        "HouseStyle": {
+            "type": "string",
+            "min_length": 4,
+            "max_length": 6,
+            "max_nulls": 0,
+            "rex": [
+                "^[A-Z]{2}$^C \\(all\\)$",
+                "^[A-Z][a-z]{3}$",
+                "^[A-Za-z]{3,4}$",
+                "^[A-Za-z0-9]{3}$",
+                "^[A-Za-z]{3}$",
+                "^[A-Za-z]{6}$",
+                "^[A-Za-z0-9]+$",
+                "^[A-Z][a-z]{2}$",
+                "^[A-Za-z]{5,7}$",
+                "^[A-Za-z]{4,6}$",
+                "^[A-Za-z]{4,6}$",
+                "^[A-Za-z0-9]{4,6}$",
+                "^[A-Za-z0-9]{4,6}$^\\d\\.\\d[A-Z][a-z]{2}$"
+            ]
+        }
+    }
+}
+
+
