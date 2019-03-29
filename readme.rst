@@ -11,7 +11,7 @@ Learn2Clean is a Python library for data preprocessing and cleaning based on Q-L
 You can try it for data preparation before clustering, regression, and classification on real-world data.
 
 
-.. image:: ./images/figure_Learn2Clean.jpg
+.. image:: ./docs/images/figure_Learn2Clean.jpeg
 
 
 **For more details**, please refer to the paper presented at the Web Conf 2019:
