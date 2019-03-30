@@ -7,9 +7,11 @@ environment:
   
 # command to install dependencies
 install:
-  - pip install codecov
-  - pip install --upgrade pip setuptools wheel  
-  - pip install --only-binary all -r learn2clean/requirements.txt --user
+  - python -m pip install -U pip
+  - python -m pip install codecov
+  - python -m easy_install -U setuptools
+  - python -m pip install --upgrade pip setuptools wheel  
+  - python -m pip install --only-binary all -r ./learn2clean/requirements.txt
   
 # command to run tests
 test_script:
