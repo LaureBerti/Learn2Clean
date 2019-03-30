@@ -2,17 +2,15 @@
 
 Welcome to Learn2Clean's documentation
 =======================================
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-------------------
 
-.. image:: ./docs/images/learn2clean.png
+.. image:: ./images/learn2clean.png
 
 **Learn2Clean: The Python library for optimizing data preprocessing and cleaning pipelines based on Q-Learning** 
 
 Learn2Clean is a Python library for data preprocessing and cleaning based on Q-Learning, a model-free reinforcement learning technique. It selects, for a given dataset, a ML model, and a quality performance metric, the optimal sequence of tasks for preperaring the data such that the quality of the ML model result is maximized.
 
-.. image:: ./docs/images/figure_Learn2Clean.jpeg
+.. image:: ./images/figure_Learn2Clean.jpeg
 
 
 In Learn2CLean, various types of representative preprocessing techniques can be used for:
@@ -44,7 +42,7 @@ Links
 
 .. toctree::
    :maxdepth: 1
-   :caption: Tutorials
+   :caption: Tutorial
    :hidden:
 
    installation
@@ -64,12 +62,3 @@ Links
    
    authors
    contributing
-   
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
