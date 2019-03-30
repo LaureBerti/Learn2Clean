@@ -5,13 +5,13 @@ python:
 install:
   - pip install codecov
   - pip install --upgrade setuptools wheel  
-  - pip install --only-binary all -r learn2clean/requirements.txt
+  - pip install --only-binary all -r ./learn2clean/requirements.txt --user
 # command to run tests
-script:
+test_script:
   - cd learn2clean
   - python setup.py install
   - cd ../tests
-  - coverage run test_leanr2clean.py
+  - coverage run test_learn2clean.py
   
 after_success:
 - codecov
