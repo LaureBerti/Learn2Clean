@@ -11,11 +11,11 @@ install:
   - python -m pip install codecov
   - python -m easy_install -U setuptools
   - python -m pip install --upgrade pip setuptools wheel  
-  - python -m pip install --only-binary all -r ./learn2clean/requirements.txt
+  - python -m pip install --only-binary all -r python-package/requirements.txt
   
 # command to run tests
 test_script:
-  - cd learn2clean
+  - cd python-package
   - python setup.py install
   - cd ../tests
   - coverage run test_learn2clean.py
