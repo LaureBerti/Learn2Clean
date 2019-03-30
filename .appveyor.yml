@@ -12,7 +12,7 @@ install:
   - pip install --only-binary all -r learn2clean/requirements.txt
   
 # command to run tests
-script:
+test_script:
   - cd learn2clean
   - python setup.py install
   - cd ../tests
