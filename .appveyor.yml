@@ -9,7 +9,7 @@ environment:
 install:
   - pip install codecov
   - pip install --upgrade pip setuptools wheel  
-  - pip install --only-binary all -r learn2clean/requirements.txt
+  - pip install --only-binary all -r learn2clean/requirements.txt --user
   
 # command to run tests
 test_script:
