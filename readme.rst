@@ -4,7 +4,8 @@
 
 **Learn2Clean: Optimizing the Sequence of Tasks for Data Preparation and Data Cleaning**
 
-|License|
+
+|Build Status| |GitHub Issues| |codecov| |License|
 
 -----------------------
 
@@ -38,5 +39,12 @@ Learn2Clean is a research prototype. Your help is very valuable to make it bette
 
 For more details, please refer to `CONTRIBUTING <https://github.com/LaureBerti/Learn2Clean/blob/master/docs/contributing.rst>`__.
 
+
+.. |Build Status| image:: https://travis-ci.org/LaureBerti/Learn2Clean.svg?branch=master
+   :target: https://travis-ci.org/LaureBerti/Learn2Clean
+.. |GitHub Issues| image:: https://img.shields.io/github/issues/LaureBerti/Learn2Clean.svg
+   :target: https://github.com/LaureBerti/Learn2Clean/issues
+.. |codecov| image:: https://codecov.io/gh/LaureBerti/Learn2Clean/branch/master/graph/badge.svg
+   :target: https://codecov.io/gh/LaureBerti/Learn2Clean
 .. |License| image:: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg
    :target: https://github.com/LaureBerti/Learn2Clean/blob/master/LICENSE
