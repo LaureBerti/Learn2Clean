@@ -31,6 +31,7 @@ class OverrideInstallCommand(install):
 
         for req in requirements:
             if pip.main(["install", req]) == 1:
+            #if getattr(pip, '_main', pip.main)(['install', req]) == 1:
                 failed.append(req)
 
         if len(failed) > 0:
@@ -45,8 +46,8 @@ class OverrideInstallCommand(install):
         install.run(self)
 
 
-# with open('README.rst') as readme_file:
-    # readme = readme_file.read()
+with open("README.rst","r") as readme_file:
+    readme = readme_file.read()
 
 
 setup(
@@ -54,7 +55,7 @@ setup(
     version='0.5.3',
     description="Python Library for Data Preprocessing with Reinforcement "
     "Learning.",
-    #long_description=readme,
+    long_description=readme,
     author="Laure BERTI-EQUILLE",
     author_email='laure.berti@ird.fr',
     url='https://github.com/LaureBerti/learn2clean',
@@ -92,16 +93,16 @@ setup(
     license='BSD-3',
     keywords='learn2clean data preprocessing pipeline',
     classifiers=[
-        'Development Status :: 5 - Production/Stable',
+        'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
         'Intended Audience :: Science/Research',
         'Topic :: Scientific/Engineering :: Artificial Intelligence',
         'Topic :: Scientific/Engineering :: Information Analysis',
-        'Topic :: Scientific/Engineering :: Data Management',
+        'Topic :: Database',
         'Topic :: Software Development :: Libraries :: Python Modules',
         'License :: OSI Approved :: BSD License',
         'Natural Language :: English',
-        'Operating System :: POSIX :: Mac',
+        'Operating System :: MacOS',
         'Programming Language :: Python :: 3.6'],
     test_suite='tests',
     tests_require=requirements)
