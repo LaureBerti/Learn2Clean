@@ -46,13 +46,13 @@ class OverrideInstallCommand(install):
         install.run(self)
 
 
-with open("./python-package/README.rst","r") as readme_file:
+with open("README.rst","r") as readme_file:
     readme = readme_file.read()
 
 
 setup(
     name='learn2clean',
-    version='0.5.3',
+    version='0.2.1',
     description="Python Library for Data Preprocessing with Reinforcement "
     "Learning.",
     long_description=readme,
