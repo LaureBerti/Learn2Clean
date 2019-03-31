@@ -52,7 +52,8 @@ with open('README.rst') as readme_file:
 setup(
     name='learn2clean',
     version='0.5.3',
-    description="Python Library for Data Preprocessing with Reinforcement Learning.",
+    description="Python Library for Data Preprocessing with Reinforcement "
+    "Learning.",
     long_description=readme,
     author="Laure BERTI-EQUILLE",
     author_email='laure.berti@ird.fr',

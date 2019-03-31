@@ -64,7 +64,7 @@ Install from the Github
     
     .. code-block:: console
 
-        $ cd python-package/
+        $ cd learn2clean/
         $ python setup.py install
 
 

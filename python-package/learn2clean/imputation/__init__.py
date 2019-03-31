@@ -1,1 +1,2 @@
-from .imputer import *
+from .imputer import Imputer
+__all__ = ['Imputer', ]

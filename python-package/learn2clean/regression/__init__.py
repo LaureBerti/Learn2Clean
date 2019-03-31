@@ -1,1 +1,2 @@
-from .regressor import *
+from .regressor import Regressor
+__all__ = ['Regressor', ]
