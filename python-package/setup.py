@@ -54,7 +54,7 @@ setup(
     version='0.5.3',
     description="Python Library for Data Preprocessing with Reinforcement "
     "Learning.",
-    long_description=readme,
+    #long_description=readme,
     author="Laure BERTI-EQUILLE",
     author_email='laure.berti@ird.fr',
     url='https://github.com/LaureBerti/learn2clean',
