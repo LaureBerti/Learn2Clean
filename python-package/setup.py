@@ -45,8 +45,8 @@ class OverrideInstallCommand(install):
         install.run(self)
 
 
-with open('./README.rst') as readme_file:
-    readme = readme_file.read()
+# with open('README.rst') as readme_file:
+    # readme = readme_file.read()
 
 
 setup(
