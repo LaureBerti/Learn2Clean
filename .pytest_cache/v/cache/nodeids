@@ -1,3 +1,3 @@
 [
-  "tests/test_learn2clean.py::test_content"
+  "python-package/tests/test_learn2clean.py::test_content"
 ]

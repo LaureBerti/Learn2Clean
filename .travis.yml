@@ -9,7 +9,7 @@ install:
 # command to run tests
 script:
   - python ./python-package/setup.py install
-  - coverage run ./tests/test_learn2clean.py
+  - coverage run ./python-package/tests/test_learn2clean.py
 #
 after_success:
 - codecov
