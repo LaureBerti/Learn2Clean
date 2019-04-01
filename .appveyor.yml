@@ -1,4 +1,4 @@
-version: 0.5.{build}
+version: 0.2.1.{build}
 
 environment:
   matrix:
@@ -11,7 +11,7 @@ install:
   - python -m pip install codecov
   - python -m easy_install -U setuptools
   - python -m pip install --upgrade pip setuptools wheel  
-  - python -m pip install --only-binary all -r python-package/requirements.txt
+  - python -m pip install -r python-package/requirements.txt
   
 # command to run tests
 test_script:

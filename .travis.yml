@@ -7,9 +7,12 @@ install:
   - pip install --upgrade setuptools wheel  
   - pip install --only-binary all -r python-package/requirements.txt
 # command to run tests
+before_install: cd python-package
 script:
-  - python ./python-package/setup.py install
-  - coverage run ./python-package/tests/test_learn2clean.py
+  - python setup.py install
+before_script: cd ../tests
+script:
+  - coverage run test_learn2clean.py
 #
 after_success:
 - codecov
