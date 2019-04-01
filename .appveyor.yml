@@ -7,20 +7,20 @@ environment:
   
 # command to install dependencies
 install:
-  - python3 -m pip install -U pip
-  - python3 -m pip install codecov
-  - python3 -m easy_install -U setuptools
-  - python3 -m pip install --upgrade pip setuptools wheel  
-  - ps: start-filedownload "https://github.com/jamesturk/jellyfish.git"
-  - pip install jellyfish
-  - python3 -m pip install -r python-package/requirements.txt
+  - python -m pip install -U pip
+  - python -m pip install codecov
+  - python -m easy_install -U setuptools
+  - python -m pip install --upgrade pip setuptools wheel  
+  #- ps: start-filedownload "https://github.com/jamesturk/jellyfish.git"
+  - python -m pip install jellyfish
+  - python -m pip install -r python-package/requirements.txt
   
 # command to run tests
 test_script:
   - cd python-package
-  - python3 setup.py install
-  - cd ../tests
+  - python setup.py install
+  - cd tests
   - coverage run test_learn2clean.py
-
+  
 cache:
   - packages -> appveyor.yml 
