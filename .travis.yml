@@ -9,7 +9,7 @@ install:
 # command to run tests
 before_install: cd python-package
 script:
-  - python setup.py install
+  - python3 setup.py install
 before_script: cd ../tests
 script:
   - coverage run test_learn2clean.py
