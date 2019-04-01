@@ -11,14 +11,13 @@ install:
   - python -m pip install codecov
   - python -m easy_install -U setuptools
   - python -m pip install --upgrade pip setuptools wheel  
-  - python -m pip install scipy sklearn jellyfish fancyimpute impyute joblib matplotlib numpy pandas sklearn_contrib_py_earth py_stringmatching py_stringsimjoin seaborn statsmodels tdda
+  - python3 -m pip3 install scipy sklearn jellyfish fancyimpute impyute joblib matplotlib numpy pandas sklearn_contrib_py_earth py_stringmatching py_stringsimjoin seaborn statsmodels tdda
   
 # command to run tests
 test_script:
   - cd python-package
-  - python setup.py install
-  - cd ../tests
-  - coverage run test_learn2clean.py
+  - python3 setup.py install
+  - coverage run ../tests/test_learn2clean.py
   
 cache:
   - packages -> appveyor.yml 
