@@ -1,0 +1,152 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Welcome to Learn2Clean’s documentation &#8212; Python  documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="&lt;no title&gt;" href="installation.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="welcome-to-learn2clean-s-documentation">
+<h1>Welcome to Learn2Clean’s documentation<a class="headerlink" href="#welcome-to-learn2clean-s-documentation" title="Permalink to this headline">¶</a></h1>
+<img alt="_images/learn2clean.png" src="_images/learn2clean.png" />
+<p><strong>Learn2Clean: The Python library for optimizing data preprocessing and cleaning pipelines based on Q-Learning</strong></p>
+<p>Learn2Clean is a Python library for data preprocessing and cleaning based on Q-Learning, a model-free reinforcement learning technique. It selects, for a given dataset, a ML model, and a quality performance metric, the optimal sequence of tasks for preperaring the data such that the quality of the ML model result is maximized.</p>
+<img alt="_images/figure_Learn2Clean.jpeg" src="_images/figure_Learn2Clean.jpeg" />
+<p>In Learn2CLean, various types of representative preprocessing techniques can be used for:</p>
+<ul class="simple">
+<li><p><strong>Normalization</strong>.  Min-Max (MM), Z-score (ZS), and decimal scale normalization (DS);</p></li>
+<li><p><strong>Feature selection</strong>. based on a user-defined acceptable ratio of missing values (MR), removing collinear features (LC), using a wrapper subset evaluator (WR), and a model-based classifier for feature selection (Tree-Based or SVC);</p></li>
+<li><p><strong>Imputation</strong>. Expectation-Maximization (EM), K-Nearest Neighbours, Multiple Imputation by Chained Equations (MICE), and replacement by the most frequent value (MF);</p></li>
+<li><p><strong>Outlier detection</strong>. Inter Quartile Range (IQR), the Z-score-based method (ZSB), Local Outlier Factor (LOF);</p></li>
+<li><p><strong>Deduplication</strong>. Exact duplicate (ED) and approximate duplicate (AD) detection based on Jaccard similarity distance;</p></li>
+<li><p><strong>Consistency checking</strong>. Two methods based on constraint discovery and checking (CC) and pattern checking (PC).</p></li>
+</ul>
+<hr class="docutils" />
+<div class="section" id="links">
+<h2>Links<a class="headerlink" href="#links" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt><strong>Tutorial:</strong></dt><dd><ul>
+<li><p>Laure Berti-Equille. ML to Data Management: A Round Trip. Tutorial Part I, ICDE 2018. <a class="reference external" href="https://github.com/LaureBerti/Learn2Clean/tree/master/docs/publications/tutorial_ICDE2018.pdf">Tutorial</a></p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><strong>Article:</strong></dt><dd><ul>
+<li><p>Laure Berti-Equille. Learn2Clean: Optimizing the Sequence of Tasks for Web Data Preparation. Proceedings of the Web Conf 2019, San Francisco, May 2019. <a class="reference external" href="https://github.com/LaureBerti/Learn2Clean/tree/master/docs/publications/theWebConf2019-preprint.pdf">Preprint</a></p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<div class="toctree-wrapper compound">
+</div>
+<div class="toctree-wrapper compound">
+</div>
+<div class="toctree-wrapper compound">
+</div>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="#">Python</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Features</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="features.html">Preprocessing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features.html#preparation">Preparation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features.html#models">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features.html#qlearning">Qlearning</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Contribution</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="authors.html">Author</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="#">Documentation overview</a><ul>
+      <li>Next: <a href="installation.html" title="next chapter">&lt;no title&gt;</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.0.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

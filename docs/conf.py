@@ -55,11 +55,11 @@ sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 # Get the project root dir, which is the parent dir of this
 cwd = os.getcwd()
 project_root = os.path.dirname(cwd)
-
+sys.path.insert(0, os.path.abspath('../python-package'))
 # Insert the project root dir as the first element in the PYTHONPATH.
 # This lets us ensure that the source package is imported, and that its
 # version is used.
-sys.path.insert(0, os.path.join(project_root, "python-package"))
+# sys.path.insert(0, os.path.join(project_root, "python-package"))
 
 import learn2clean
 
@@ -70,9 +70,11 @@ import learn2clean
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.viewcode', 'sphinx.ext.napoleon']
+extensions = ['sphinx.ext.autodoc', 'sphinx.ext.viewcode', 'sphinx.ext.napoleon', 'sphinx.ext.todo']
+
 napoleon_numpy_docstring = True
 
+numpydoc_show_class_members = False
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
@@ -110,7 +112,7 @@ release = '0.2.1'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ['_build', '__init__.py']
+exclude_patterns = ['_build', '*/site-packages/*','*/distutils/*']
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
@@ -122,7 +124,7 @@ exclude_patterns = ['_build', '__init__.py']
 # If true, the current module name will be prepended to all description
 # unit titles (such as .. function::).
 #add_module_names = True
-
+autodoc_mock_imports = ['version']
 # If true, sectionauthor and moduleauthor directives will be shown in the
 # output. They are ignored by default.
 #show_authors = False

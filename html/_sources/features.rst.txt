@@ -34,7 +34,7 @@ Outlier Detection
 .. automodule:: learn2clean.outlier_detection.outlier_detector
 
 Duplicate Detection
--------------------
+-----------------
 
 .. automodule:: learn2clean.duplicate_detection.duplicate_detector
 
