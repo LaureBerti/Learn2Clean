@@ -1,3 +1,4 @@
+#for Linux and MacOS
 language: python
 python:
   - "3.6"
@@ -10,6 +11,9 @@ install:
 # command to run tests
 script:
   - python3 setup.py install
+cache:
+  directories:
+  - python-package/learn2clean
 before_script: cd tests
 script:
   - coverage run test_learn2clean.py
