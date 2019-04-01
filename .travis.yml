@@ -2,12 +2,12 @@ language: python
 python:
   - "3.6"
 # command to install dependencies
+before_install: cd python-package
 install:
   - pip install codecov
   - pip install --upgrade setuptools wheel  
-  - pip install --only-binary all -r python-package/requirements.txt
+  - pip install --only-binary all -r requirements.txt
 # command to run tests
-before_install: cd python-package
 script:
   - python3 setup.py install
 before_script: cd ../tests
