@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
 # coding: utf-8
-# Author:Laure Berti-Equille <laure.berti@ird.fr>
 
 __author__ = """Laure Berti-Equille"""
 __email__ = 'laure.berti@ird.fr'

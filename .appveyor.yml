@@ -11,15 +11,13 @@ install:
   - python -m pip install codecov
   - python -m easy_install -U setuptools
   - python -m pip install --upgrade pip setuptools wheel  
-  #- ps: start-filedownload "https://github.com/jamesturk/jellyfish.git"
-  - python -m pip install jellyfish
-  - python -m pip install -r python-package/requirements.txt
+  - python -m pip install scipy sklearn jellyfish fancyimpute impyute joblib matplotlib numpy pandas sklearn_contrib_py_earth py_stringmatching py_stringsimjoin seaborn statsmodels tdda
   
 # command to run tests
 test_script:
   - cd python-package
   - python setup.py install
-  - cd tests
+  - cd ../tests
   - coverage run test_learn2clean.py
   
 cache:

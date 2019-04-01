@@ -9,6 +9,8 @@ Tests for `learn2clean` module.
 import pytest
 import learn2clean
 
+__all__ = ['learn2clean', ]
+
 
 @pytest.fixture
 def response():

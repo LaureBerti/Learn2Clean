@@ -12,7 +12,6 @@
 #
 # All configuration values have a default; values that are commented out
 # serve to show the default.
-
 import sys
 import os
 from mock import Mock as MagicMock
@@ -48,21 +47,19 @@ MOCK_MODULES = ['numpy',
 
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
-
 # If extensions (or modules to document with autodoc) are in another
 # directory, add these directories to sys.path here. If the directory is
 # relative to the documentation root, use os.path.abspath to make it
 # absolute, like shown here.
-sys.path.insert(0, os.path.abspath('../python-package/'))
-
+#sys.path.insert(0, os.path.abspath('.'))
 # Get the project root dir, which is the parent dir of this
-#cwd = os.getcwd()
-#project_root = os.path.dirname(cwd)
+cwd = os.getcwd()
+project_root = os.path.dirname(cwd)
 
 # Insert the project root dir as the first element in the PYTHONPATH.
 # This lets us ensure that the source package is imported, and that its
 # version is used.
-#sys.path.insert(0, os.path.join(project_root, ""))
+sys.path.insert(0, os.path.join(project_root, "python-package"))
 
 import learn2clean
 
@@ -113,7 +110,7 @@ release = learn2clean.__version__
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ['_build']
+exclude_patterns = ['_build', '__init__.py']
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
