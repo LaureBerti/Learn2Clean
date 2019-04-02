@@ -31,7 +31,6 @@ class OverrideInstallCommand(install):
 
         # for req in requirements:
             # if pip.main(["install", req]) == 1:
-            #if getattr(pip, '_main', pip.main)(['install', req]) == 1:
             #    failed.append(req)
 
         if len(failed) > 0:
