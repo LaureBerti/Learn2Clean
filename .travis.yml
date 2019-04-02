@@ -13,9 +13,9 @@ install:
 before_script: 
   - cd ../
   - pip install tox
+  - pip install pytest
 script:
   - tox 
-  - cp ./python-package/.coveragerc . 
   - coverage run --source learn2clean -m pytest
 after_success:
   - codecov
