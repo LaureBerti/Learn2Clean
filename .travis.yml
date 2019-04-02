@@ -11,11 +11,11 @@ install:
   - python3 setup.py install
 # command to run tests
 before_script: 
-  - pwd
+  - cd ../
 script:
-  - cd ../ && make test-all
-  - cp ../.coveragerc .
-  - cd ../ && make coverage
+  - make test-all
+  - cp ./python-package/.coveragerc .
+  - make coverage
   #- if [[ "$RUN_COVERAGE" == 1 ]]; then cd ../ && codecov; fi
 after_success:
   - codecov
