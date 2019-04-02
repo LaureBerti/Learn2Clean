@@ -11,9 +11,9 @@ install:
 # command to run tests 
 before_script: 
   - cd ../
-  - pip install tox
+  #- pip install tox
 script:
-  - tox 
+  - flake 8 learn2clean
   - coverage run --source learn2clean -m pytest
 after_success:
   - codecov
