@@ -10,10 +10,12 @@ install:
   - pip install --only-binary all -r requirements.txt
   - python3 setup.py install
 # command to run tests
-before_script: cd ../
+before_script: 
+  - cd ;;/
+  - pip install tox
 script:
   - tox 
-  - cp .travis/python-package/.coveragerc . 
+  - cp ./python-package/.coveragerc . 
   - coverage run --source learn2clean -m pytest
 after_success:
   - codecov
