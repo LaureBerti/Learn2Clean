@@ -10,10 +10,8 @@ install:
   - pip install --only-binary all -r requirements.txt
   - python3 setup.py install
 # command to run tests
-
 before_script: 
 	- pwd
-
 script:
   - cd ../ && make test-all
   - cp ../.coveragerc .
