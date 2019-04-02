@@ -12,6 +12,7 @@ install:
 before_script: 
   - cd ../
   - pip install pytest
+  - pip install flake8
 script:
   - flake8 learn2clean
   - python -m pytest
