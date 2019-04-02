@@ -3,7 +3,7 @@ language: python
 python:
   - "3.6"
 # command to install dependencies
-before_install: cd python-package/
+before_install: cd .travis/python-package/
 install:
   - pip install codecov
   - pip install --upgrade setuptools wheel  
@@ -11,10 +11,9 @@ install:
   - python3 setup.py install
 # command to run tests
 before_script: 
-  - cd ../
-script:
+  - cd .travis/
   - make test-all
-  - cp ./python-package/.coveragerc .
+  - cp .travis/python-package/.coveragerc .
   - make coverage
   #- if [[ "$RUN_COVERAGE" == 1 ]]; then cd ../ && codecov; fi
 after_success:
