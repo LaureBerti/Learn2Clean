@@ -11,7 +11,7 @@ install:
   - python3 setup.py install
 # command to run tests
 before_script: 
-  - cd ;;/
+  - cd ../
   - pip install tox
 script:
   - tox 
