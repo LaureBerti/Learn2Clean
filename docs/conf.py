@@ -55,7 +55,8 @@ sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 # Get the project root dir, which is the parent dir of this
 cwd = os.getcwd()
 project_root = os.path.dirname(cwd)
-sys.path.insert(0, os.path.abspath('../python-package'))
+sys.path.insert(0, os.path.abspath('../python-package/learn2clean'))
+
 # Insert the project root dir as the first element in the PYTHONPATH.
 # This lets us ensure that the source package is imported, and that its
 # version is used.
@@ -164,12 +165,12 @@ html_short_title = "Learn2Clean Documentation"
 
 # The name of an image file (relative to this directory) to place at the
 # top of the sidebar.
-html_logo = "logos/small_logo.png"
+html_logo = "images/small_logo.png"
 
 # The name of an image file (within the static path) to use as favicon
 # of the docs.  This file should be a Windows icon file (.ico) being
 # 16x16 or 32x32 pixels large.
-html_favicon = "logos/small_logo.ico"
+html_favicon = "images/small_logo.ico"
 
 # Add any paths that contain custom static files (such as style sheets)
 # here, relative to this directory. They are copied after the builtin

@@ -88,13 +88,12 @@ coverage: ## check code coverage quickly with the default Python
 		$(BROWSER) htmlcov/index.html
 
 docs: ## generate Sphinx HTML documentation, including API docs
-	cd docs
-	rm -f learn2clean.rst
-	rm -f modules.rst
+	rm -f docs/learn2clean.rst
+	rm -f docs/modules.rst
 	sphinx-apidoc -F --implicit-namespace -o docs/ ./python-package/learn2clean
 	$(MAKE) -C docs clean
 	$(MAKE) -C docs html
-	$(BROWSER) ./_build/html/index.html
+	$(BROWSER) docs/_build/html/index.html
 
 release: clean ## package and upload a release
 	python3 -m pip install --user --upgrade setuptools wheel

@@ -4,9 +4,12 @@ Welcome to Learn2Clean's documentation
 =======================================
 
 
-.. image:: ./images/learn2clean.png
+.. image:: ./images/learn2clean-text.png
 
 **Learn2Clean: The Python library for optimizing data preprocessing and cleaning pipelines based on Q-Learning** 
+
+Overview
+--------
 
 Learn2Clean is a Python library for data preprocessing and cleaning based on Q-Learning, a model-free reinforcement learning technique. It selects, for a given dataset, a ML model, and a quality performance metric, the optimal sequence of tasks for preperaring the data such that the quality of the ML model result is maximized.
 
@@ -27,10 +30,9 @@ In Learn2CLean, various types of representative preprocessing techniques can be 
 
 * **Consistency checking**. Two methods based on constraint discovery and checking (CC) and pattern checking (PC).
 
--------------------
 
 Links
-~~~~~
+-----
 
 
 * **Tutorial:** 
@@ -39,27 +41,26 @@ Links
 * **Article:**
    * Laure Berti-Equille. Learn2Clean: Optimizing the Sequence of Tasks for Web Data Preparation. Proceedings of the Web Conf 2019, San Francisco, May 2019. `Preprint <https://github.com/LaureBerti/Learn2Clean/tree/master/docs/publications/theWebConf2019-preprint.pdf>`_
 
-.. code-block:: python 
+      .. code-block:: bibtex 
 
-    BibTeX 
+          [BibTeX] 
 
-   @inproceedings{Vaish:2018:CCR:3178876.3186031,
-    author = {Berti-Equille, Laure},
-    title = {Learn2Clean: Optimizing the Sequence of Tasks for Web Data Preparation},
-    booktitle = {Proceedings of the 2019 World Wide Web Conference},
-    series = {WWW '19},
-    year = {2019},
-    location = {San Francisco, CA, USA},
-    url = {https://doi.org/10.1145/3308558.3313602},
-    doi = {10.1145/3308558.3313602},
-    publisher = {International World Wide Web Conferences Steering Committee}
-   } 
-
+            @inproceedings{Berti-Equille2019,
+             author = {Berti-Equille, Laure},
+             title = {Learn2Clean: Optimizing the Sequence of Tasks for Web Data Preparation},
+             booktitle = {Proceedings of the 2019 World Wide Web Conference},
+             series = {WWW '19},
+             year = {2019},
+             location = {San Francisco, CA, USA},
+             url = {https://doi.org/10.1145/3308558.3313602},
+             doi = {10.1145/3308558.3313602},
+             publisher = {International World Wide Web Conferences Steering Committee}
+            }
 
 
 .. toctree::
-   :maxdepth: 1
-   :caption: Tutorial
+   :maxdepth: 4
+   :caption: Tutorials
    :hidden:
 
    installation
@@ -78,6 +79,5 @@ Links
    :hidden:
    
    authors
+   history
    contributing
-
-   

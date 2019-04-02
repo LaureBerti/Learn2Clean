@@ -1,1 +1,1 @@
-.. include:: ../learn2clean/README.rst
+.. include:: ../python-package/README.rst

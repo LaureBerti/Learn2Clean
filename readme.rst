@@ -1,4 +1,4 @@
-.. image:: ./docs/images/learn2clean.png
+.. image:: ./docs/images/learn2clean-text.png
 
 -----------------------
 
