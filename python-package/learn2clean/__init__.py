@@ -3,6 +3,7 @@
 __author__ = """Laure Berti-Equille"""
 __email__ = 'laure.berti@ird.fr'
 __version__ = '0.2.1'
+__name__ = 'Learn2Clean'
 
 import pandas as pd
 import numpy as np

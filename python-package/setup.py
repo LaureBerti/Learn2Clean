@@ -8,7 +8,7 @@ from setuptools.command.install import install
 requirements = [
     "fancyimpute == 0.4.2",
     "impyute == 0.0.7",
-    "jellyfish == 0.6.1",# 0.7.1 cannot be found by Appveyor
+    "jellyfish == 0.7.1",
     "joblib == 0.13.1",
     "matplotlib == 2.2.2",
     "numpy == 1.14.3",

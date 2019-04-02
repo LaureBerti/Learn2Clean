@@ -6,8 +6,8 @@ try:
 	from urllib import pathname2url
 except:
 	from urllib.request import pathname2url
-
-webbrowser.open("file://" + pathname2url(os.path.abspath(sys.argv[1])))
+browser = webbrowser.get("Safari")
+browser.open("file://" + pathname2url(os.path.abspath(sys.argv[1])))
 endef
 export BROWSER_PYSCRIPT
 
@@ -21,7 +21,37 @@ for line in sys.stdin:
 		print("%-20s %s" % (target, help))
 endef
 export PRINT_HELP_PYSCRIPT
+
+# Minimal makefile for Sphinx documentation
+#
+
+# You can set these variables from the command line.
+SPHINXOPTS    =
+SPHINXBUILD   = sphinx-build
+SPHINXPROJ    = leanr2clean
+SOURCEDIR     = ./docs
+BUILDDIR      = _build
+PAPER         =
+# Put it first so that "make" without argument is like "make help".
+
+# Catch-all target: route all unknown targets to Sphinx using the new
+# "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).
+
+
 BROWSER := python -c "$$BROWSER_PYSCRIPT"
+
+
+# User-friendly check for sphinx-build
+ifeq ($(shell which $(SPHINXBUILD) >/dev/null 2>&1; echo $$?), 1)
+$(error The '$(SPHINXBUILD)' command was not found. Make sure you have Sphinx installed, then set the SPHINXBUILD environment variable to point to the full path of the '$(SPHINXBUILD)' executable. Alternatively you can add the directory with the executable to your PATH. If you don't have Sphinx installed, grab it from http://sphinx-doc.org/)
+endif
+
+# Internal variables.
+PAPEROPT_a4     = -D latex_paper_size=a4
+PAPEROPT_letter = -D latex_paper_size=letter
+ALLSPHINXOPTS   = -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
+# the i18n builder cannot share the environment and doctrees with the others
+I18NSPHINXOPTS  = $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
 
 help:
 	@python -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
@@ -30,8 +60,8 @@ clean: clean-build clean-pyc clean-test ## remove all build, test, coverage and 
 
 
 clean-build: ## remove build artifacts
-	rm -fr build/
-	rm -fr dist/
+	rm -fr ./python-package/build/
+	rm -fr ./python-package/dist/
 	rm -fr .eggs/
 	find . -name '*.egg-info' -exec rm -fr {} +
 	find . -name '*.egg' -exec rm -f {} +
@@ -65,24 +95,22 @@ coverage: ## check code coverage quickly with the default Python
 		$(BROWSER) htmlcov/index.html
 
 docs: ## generate Sphinx HTML documentation, including API docs
-	rm -f docs/learn2clean.rst
-	rm -f docs/modules.rst
-	sphinx-apidoc -o docs/ ./python-package/learn2clean
+	cd docs
+	rm -f learn2clean.rst
+	rm -f modules.rst
+	sphinx-apidoc -F --implicit-namespace -o docs/ ./python-package/learn2clean
 	$(MAKE) -C docs clean
 	$(MAKE) -C docs html
-	$(BROWSER) docs/_build/html/index.html
-
-servedocs: docs ## compile the docs watching for changes
-	watchmedo shell-command -p '*.rst' -c '$(MAKE) -C docs html' -R -D .
+	$(BROWSER) ./_build/html/index.html
 
 release: clean ## package and upload a release
-	python3 setup.py sdist upload
-	python3 setup.py bdist_wheel upload
+	python3 ./python-package/setup.py sdist upload
+	python3 ./python-package/setup.py bdist_wheel upload
 
 dist: clean ## builds source and wheel package
-	python3 setup.py sdist
-	python3 setup.py bdist_wheel
+	python3 ./python-package/setup.py sdist
+	python3 ./python-package/setup.py bdist_wheel
 	ls -l dist
 
 install: clean ## install the package to the active Python's site-packages
-	python3 setup.py install
+	python3 ./python-package/setup.py install

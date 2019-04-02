@@ -61,7 +61,7 @@ sys.path.insert(0, os.path.abspath('../python-package'))
 # version is used.
 # sys.path.insert(0, os.path.join(project_root, "python-package"))
 
-import learn2clean
+#import learn2clean
 
 # -- General configuration ---------------------------------------------
 
@@ -71,7 +71,7 @@ import learn2clean
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.viewcode', 'sphinx.ext.napoleon', 'sphinx.ext.todo']
-
+#needs_extensions = [setup()]
 napoleon_numpy_docstring = True
 
 numpydoc_show_class_members = False
@@ -112,7 +112,7 @@ release = '0.2.1'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ['_build', '*/site-packages/*','*/distutils/*']
+exclude_patterns = ['_build', '*init*.py','version.py']
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
@@ -176,6 +176,11 @@ html_favicon = "logos/small_logo.ico"
 # static files, so a file named "default.css" will overwrite the builtin
 # "default.css".
 html_static_path = ['_static']
+
+
+import os
+on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
+
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page
 # bottom, using the given strftime format.
