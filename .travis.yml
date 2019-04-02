@@ -3,20 +3,21 @@ language: python
 python:
   - "3.6"
 # command to install dependencies
-before_install: cd python-package
+before_install: cd python-package/
 install:
   - pip install codecov
   - pip install --upgrade setuptools wheel  
   - pip install --only-binary all -r requirements.txt
-# command to run tests
-script:
   - python3 setup.py install
+# command to run tests
 
-before_script: cd ..
+before_script: 
+	- pwd
+
 script:
-  - make clean
-  - make test-all
-  - make coverage
-#
+  - cd ../ && make test-all
+  - cp ../.coveragerc .
+  - cd ../ && make coverage
+  #- if [[ "$RUN_COVERAGE" == 1 ]]; then cd ../ && codecov; fi
 after_success:
 - codecov
