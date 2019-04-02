@@ -46,13 +46,6 @@ ifeq ($(shell which $(SPHINXBUILD) >/dev/null 2>&1; echo $$?), 1)
 $(error The '$(SPHINXBUILD)' command was not found. Make sure you have Sphinx installed, then set the SPHINXBUILD environment variable to point to the full path of the '$(SPHINXBUILD)' executable. Alternatively you can add the directory with the executable to your PATH. If you don't have Sphinx installed, grab it from http://sphinx-doc.org/)
 endif
 
-# Internal variables.
-PAPEROPT_a4     = -D latex_paper_size=a4
-PAPEROPT_letter = -D latex_paper_size=letter
-ALLSPHINXOPTS   = -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
-# the i18n builder cannot share the environment and doctrees with the others
-I18NSPHINXOPTS  = $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
-
 help:
 	@python -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
 
@@ -104,8 +97,11 @@ docs: ## generate Sphinx HTML documentation, including API docs
 	$(BROWSER) ./_build/html/index.html
 
 release: clean ## package and upload a release
-	python3 ./python-package/setup.py sdist upload
-	python3 ./python-package/setup.py bdist_wheel upload
+	python3 -m pip install --user --upgrade setuptools wheel
+	python3 ./python-package/setup.py sdist
+	python3 ./python-package/setup.py bdist_wheel
+	python3 -m pip install --user --upgrade twine
+	python3 -m twine upload dist/*
 
 dist: clean ## builds source and wheel package
 	python3 ./python-package/setup.py sdist

@@ -35,7 +35,7 @@ Installation
 Install from pip 
 ~~~~~~~~~~~~~~~~
 
-MLBox is now available on **PyPI**, so you only need to run the following command:
+Learn2clean is now available on **PyPI**, so you only need to run the following command:
 
 .. code-block:: console
 
@@ -45,7 +45,7 @@ MLBox is now available on **PyPI**, so you only need to run the following comman
 Install from the Github
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-* **The sources for MLBox can be downloaded** from the `Github repo`_.
+* **The sources for Learn2clean can be downloaded** from the `Github repo`_.
 
     * You can either clone the public repository:
 

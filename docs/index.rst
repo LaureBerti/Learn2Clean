@@ -39,6 +39,23 @@ Links
 * **Article:**
    * Laure Berti-Equille. Learn2Clean: Optimizing the Sequence of Tasks for Web Data Preparation. Proceedings of the Web Conf 2019, San Francisco, May 2019. `Preprint <https://github.com/LaureBerti/Learn2Clean/tree/master/docs/publications/theWebConf2019-preprint.pdf>`_
 
+.. code-block:: python 
+
+    BibTeX 
+
+   @inproceedings{Vaish:2018:CCR:3178876.3186031,
+    author = {Berti-Equille, Laure},
+    title = {Learn2Clean: Optimizing the Sequence of Tasks for Web Data Preparation},
+    booktitle = {Proceedings of the 2019 World Wide Web Conference},
+    series = {WWW '19},
+    year = {2019},
+    location = {San Francisco, CA, USA},
+    url = {https://doi.org/10.1145/3308558.3313602},
+    doi = {10.1145/3308558.3313602},
+    publisher = {International World Wide Web Conferences Steering Committee}
+   } 
+
+
 
 .. toctree::
    :maxdepth: 1
