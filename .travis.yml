@@ -13,7 +13,6 @@ install:
 before_script: 
   - cd ../
   - pip install tox
-  - pip install pytest
 script:
   - tox 
   - coverage run --source learn2clean -m pytest
