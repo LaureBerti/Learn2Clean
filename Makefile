@@ -97,8 +97,6 @@ docs: ## generate Sphinx HTML documentation, including API docs
 
 release: clean ## package and upload a release
 	python3 -m pip install --user --upgrade setuptools wheel
-	python3 ./python-package/setup.py sdist
-	python3 ./python-package/setup.py bdist_wheel
 	python3 -m pip install --user --upgrade twine
 	python3 -m twine upload dist/*
 

@@ -75,7 +75,7 @@ Install from the Github
 .. |Documentation Status| image:: https://readthedocs.org/projects/learn2clean/badge/?version=latest
    :target: https://learn2clean.readthedocs.io/en/latest/
 .. |PyPI version| image:: https://badge.fury.io/py/learn2clean.svg
-   :target: https://pypi.python.org/pypi/learn2clean
+   :target: https://pypi.org/project/learn2clean/
 .. |Build Status| image:: https://travis-ci.org/LaureBerti/Learn2Clean.svg?branch=master
    :target: https://travis-ci.org/LaureBerti/Learn2Clean
 .. |GitHub Issues| image:: https://img.shields.io/github/issues/LaureBerti/Learn2Clean.svg
