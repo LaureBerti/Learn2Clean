@@ -51,3 +51,12 @@ For more details, please refer to `CONTRIBUTING <https://github.com/LaureBerti/L
    :target: https://codecov.io/gh/LaureBerti/Learn2Clean
 .. |License| image:: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg
    :target: https://github.com/LaureBerti/Learn2Clean/blob/master/LICENSE
+   
+
+--------------------------
+
+Licence
+=================
+
+Learn2Clean is licensed under the BSD 3-Clause "New" or "Revised" License.
+
