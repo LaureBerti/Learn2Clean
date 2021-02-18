@@ -55,7 +55,7 @@ For more details, please refer to `CONTRIBUTING <https://github.com/LaureBerti/L
 
 --------------------------
 
-Licence
+Licence 
 =================
 
 Learn2Clean is licensed under the BSD 3-Clause "New" or "Revised" License.
