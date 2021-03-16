@@ -17,7 +17,7 @@ You can try it for composing your own data preprocessing pipelines or for automi
 .. image:: ./docs/images/figure_Learn2Clean.jpeg
 
 
-**For more details**, please refer to the paper presented at the Web Conf 2019 and the tutorial.
+**For more details**, please refer to the paper presented at the Web Conf 2019 and the related tutorial.
 
 - Laure Berti-Equille. Learn2Clean: Optimizing the Sequence of Tasks for Web Data Preparation. Proceedings of the Web Conf 2019, San Francisco, May 2019. `Preprint <https://github.com/LaureBerti/Learn2Clean/tree/master/docs/publications/theWebConf2019-preprint.pdf>`__ 
 
