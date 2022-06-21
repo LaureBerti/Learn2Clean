@@ -11,7 +11,7 @@ requirements = [
     "jellyfish == 0.7.1",
     "joblib == 0.13.1",
     "matplotlib == 2.2.2",
-    "numpy == 1.14.3",
+    "numpy == 1.22.0",
     "pandas == 0.23.0",
     "py_stringmatching == 0.4.0",
     "py_stringsimjoin == 0.1.0",
