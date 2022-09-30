@@ -9,7 +9,7 @@ requirements = [
     "fancyimpute == 0.4.2",
     "impyute == 0.0.7",
     "jellyfish == 0.7.1",
-    "joblib == 0.13.1",
+    "joblib == 1.2.0",
     "matplotlib == 2.2.2",
     "numpy == 1.14.3",
     "pandas == 0.23.0",
