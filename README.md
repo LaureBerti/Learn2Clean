@@ -1,11 +1,9 @@
-.. image:: ./docs/images/learn2clean-text.png
+![Learn2Clean](./docs/images/learn2clean-text.png)
 
 -----------------------
 
 # Learn2Clean: Automated Data Cleaning with Reinforcement Learning
 
-
-|Documentation Status| |PyPI version| |Build Status| |GitHub Issues| |codecov| |License|
 
 
 **Learn2Clean V2** is a modular Python framework designed to optimize data preparation pipelines using **Deep Reinforcement
@@ -14,14 +12,14 @@ Learning (DRL)**. It wraps standard data cleaning tasks (Imputation, Deduplicati
 
 Learn2Clean V1 is a Python library for data preprocessing and cleaning based on Q-Learning, a model-free reinforcement learning technique. It selects, for a given dataset, a ML model, and a quality performance metric, the optimal sequence of tasks for preparing the data such that the quality of the ML model result is maximized. 
 
-.. image:: ./docs/images/figure_Learn2Clean.jpeg
+![Learn2Clean](./docs/images/figure_Learn2Clean.jpeg)
 
 
 **For more details** about V1, please refer to the paper presented at the Web Conf 2019 and the related tutorial.
 
-- Laure Berti-Equille. Learn2Clean: Optimizing the Sequence of Tasks for Web Data Preparation. Proceedings of the Web Conf 2019, San Francisco, May 2019. `Preprint <https://github.com/LaureBerti/Learn2Clean/tree/master/docs/publications/theWebConf2019-preprint.pdf>`__ 
+- Laure Berti-Equille. Learn2Clean: Optimizing the Sequence of Tasks for Web Data Preparation. Proceedings of the Web Conf 2019, San Francisco, May 2019. [Preprint](<https://github.com/LaureBerti/Learn2Clean/tree/master/docs/publications/theWebConf2019-preprint.pdf>)
 
-- Laure Berti-Equille. ML to Data Management: A Round Trip. Tutorial Part I, ICDE 2018. `Tutorial <https://github.com/LaureBerti/Learn2Clean/tree/master/docs/publications/tutorial_ICDE2018.pdf>`__ 
+- Laure Berti-Equille. ML to Data Management: A Round Trip. Tutorial Part I, ICDE 2018. [Tutorial](<https://github.com/LaureBerti/Learn2Clean/tree/master/docs/publications/tutorial_ICDE2018.pdf>)
 
 
 
@@ -347,27 +345,13 @@ Contributions are welcome!
 4. Push to the branch (`git push origin feature/AmazingFeature`).
 5. Open a Pull Request.
 
-.. |Documentation Status| image:: https://readthedocs.org/projects/learn2clean/badge/?version=latest
-   :target: https://learn2clean.readthedocs.io/en/latest/
-.. |PyPI version| image:: https://badge.fury.io/py/learn2clean.svg
-   :target: https://pypi.python.org/pypi/learn2clean
-.. |Build Status| image:: https://travis-ci.org/LaureBerti/Learn2Clean.svg?branch=master
-   :target: https://travis-ci.org/LaureBerti/Learn2Clean
-.. |GitHub Issues| image:: https://img.shields.io/github/issues/LaureBerti/Learn2Clean.svg
-   :target: https://github.com/LaureBerti/Learn2Clean/issues
-.. |codecov| image:: https://codecov.io/gh/LaureBerti/Learn2Clean/branch/master/graph/badge.svg
-   :target: https://codecov.io/gh/LaureBerti/Learn2Clean
-.. |License| image:: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg
-   :target: https://github.com/LaureBerti/Learn2Clean/blob/master/LICENSE
- 
 
 ## 🪪 License
 
-This project is distributed under the **X License**.
+Learn2Clean is licensed under the BSD 3-Clause "New" or "Revised" License.
 
 ---
 
 ## 👤 Author
 
-**Laure Berti**  
-[LaureBerti](https://github.com/LaureBerti)
+[**Laure Berti** ](https://github.com/LaureBerti)
