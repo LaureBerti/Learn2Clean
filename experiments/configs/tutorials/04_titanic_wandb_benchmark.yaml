@@ -1,0 +1,41 @@
+# @package _global_
+# ------------------------------------------------------------------------------
+# HYDRA CONFIGURATION: TITANIC BENCHMARK (WITH WANDB TRACKING)
+# ------------------------------------------------------------------------------
+#
+# OBJECTIVE:
+# Run the full Titanic benchmark (like Tuto 03) but with Weights & Biases (WandB)
+# tracking enabled.
+#
+# KEY FEATURES:
+# 1. Action Space: Loads all available tools (Imputation, Scaling, etc.).
+# 2. Metric: Uses Wasserstein Distance to quantify data quality improvements.
+# 3. Logging: Sends all metrics, logs, and artifacts to the WandB dashboard.
+#
+# IMPORTANT:
+# The directive '# @package _global_' is crucial when this file is located
+# inside a subdirectory. It tells Hydra to flatten the configuration namespace
+# so parameters are accessible at the root level.
+
+defaults:
+  - default
+
+  # --- 2. ACTION SPACE ---
+  # Load the "Full Suite" of actions (indices 0 to N).
+  # The benchmark will iterate through or select from these available tools.
+  - /actions: all
+
+  # --- 3. REWARD / METRIC ---
+  # Load the metric configuration used to evaluate the cleaning steps.
+  # Here, 'wasserstein' distance measures how much the data distribution changes.
+  # This value will be the main signal plotted in WandB.
+  - /distance: wasserstein
+  # display log INFO
+  - override /hydra: default
+  - _self_
+
+# ------------------------------------------------------------------------------
+# EXPERIMENT METADATA
+# ------------------------------------------------------------------------------
+experiment:
+  name: "04 Titanic Wandb Benchmark"

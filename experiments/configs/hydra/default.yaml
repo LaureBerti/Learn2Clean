@@ -1,0 +1,6 @@
+run:
+  dir: ${oc.env:PROJECT_ROOT}/experiments/outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+
+sweep:
+  dir: ${oc.env:PROJECT_ROOT}/experiments/outputs
+  subdir: ${hydra.job.num}

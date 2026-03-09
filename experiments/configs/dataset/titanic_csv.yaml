@@ -1,0 +1,8 @@
+defaults:
+  - csv
+  - _self_
+
+dataset: titanic.csv
+target_col: "Survived"
+read_csv_kwargs:
+  sep: ","

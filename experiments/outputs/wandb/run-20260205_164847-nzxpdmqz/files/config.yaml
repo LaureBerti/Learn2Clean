@@ -1,0 +1,291 @@
+_current_progress_remaining:
+    value: 1
+_custom_logger:
+    value: "False"
+_episode_num:
+    value: 0
+_last_episode_starts:
+    value: '[ True]'
+_last_obs:
+    value: 'OrderedDict({''action_history'': array([[0., 0., 0., 0., 0., 0.]], dtype=float32), ''dataset_stats'': array([[891.,  11., 866.,   6.,   5.]], dtype=float32)})'
+_last_original_obs:
+    value: None
+_logger:
+    value: <stable_baselines3.common.logger.Logger object at 0x13f3cd8b0>
+_n_updates:
+    value: 0
+_num_timesteps_at_start:
+    value: 0
+_stats_window_size:
+    value: 100
+_total_timesteps:
+    value: 5000
+_vec_normalize_env:
+    value: None
+_wandb:
+    value:
+        cli_version: 0.24.0
+        code_path: code/experiments/tutorials/09_sequential_sb3_ppo.py
+        e:
+            0l5hsv1woknjxxmvh3gyza18crwko0at:
+                codePath: experiments/tutorials/09_sequential_sb3_ppo.py
+                codePathLocal: 09_sequential_sb3_ppo.py
+                cpu_count: 8
+                cpu_count_logical: 16
+                disk:
+                    /:
+                        total: "4001907707904"
+                        used: "594137571328"
+                email: laure.berti@ird.fr
+                executable: /Users/laureberti/Git/Learn2Clean_v2/.venv/bin/python
+                git:
+                    commit: 5a490844ddbb112f622008c9c32faa1c943e4dbe
+                    remote: https://github.com/LaureBerti/Learn2Clean_v2.git
+                host: new-mac.local
+                memory:
+                    total: "68719476736"
+                os: macOS-26.2-x86_64-i386-64bit
+                program: /Users/laureberti/Git/Learn2Clean_v2/experiments/tutorials/09_sequential_sb3_ppo.py
+                python: CPython 3.12.2
+                root: /Users/laureberti/Git/Learn2Clean_v2/experiments/outputs
+                startedAt: "2026-02-05T15:48:47.914911Z"
+                writerId: 0l5hsv1woknjxxmvh3gyza18crwko0at
+        m: []
+        python_version: 3.12.2
+        t:
+            "1":
+                - 1
+                - 5
+                - 49
+                - 50
+                - 51
+                - 53
+            "2":
+                - 1
+                - 5
+                - 49
+                - 50
+                - 51
+                - 53
+            "3":
+                - 1
+                - 2
+                - 3
+                - 13
+                - 15
+                - 16
+                - 22
+                - 35
+            "4": 3.12.2
+            "5": 0.24.0
+            "12": 0.24.0
+            "13": darwin-x86_64
+action_noise:
+    value: None
+action_space:
+    value: Discrete(6)
+actions:
+    value:
+        "0":
+            _target_: learn2clean.actions.ExactDeduplicator
+            columns: null
+            exclude: null
+            keep: first
+            name: ExactDeduplicator
+        "1":
+            _target_: learn2clean.actions.MeanImputer
+            columns: null
+            exclude: null
+            name: MeanImputer
+        "2":
+            _target_: learn2clean.actions.MFImputer
+            columns: null
+            exclude: null
+            max_iter: 200
+            name: MFImputer
+            random_state: null
+            rank: 10
+        "3":
+            _target_: learn2clean.actions.MinMaxScaler
+            columns: null
+            exclude: null
+            name: MinMaxScaler
+        "4":
+            _target_: learn2clean.actions.ZScoreScaler
+            columns: null
+            exclude: null
+            name: ZScoreScaler
+            with_mean: true
+            with_std: true
+        "5":
+            _target_: learn2clean.actions.IQROutlierCleaner
+            columns: null
+            exclude: null
+            factor: 1.5
+            method: mask
+            name: IQROutlierCleaner
+            numeric_only: true
+agent:
+    value:
+        name: PPO (Sequential)
+        params:
+            batch_size: 16
+            device: auto
+            ent_coef: 0.05
+            gae_lambda: 0.95
+            gamma: 0.99
+            learning_rate: 0.001
+            n_steps: 64
+            verbose: 1
+        policy: MultiInputPolicy
+algo:
+    value: PPO
+batch_size:
+    value: 16
+clip_range:
+    value: <function get_schedule_fn.<locals>.<lambda> at 0x13e112f20>
+clip_range_vf:
+    value: None
+dataset:
+    value:
+        _target_: learn2clean.loaders.CSVLoader
+        dataset: titanic.csv
+        file_path: null
+        read_csv_kwargs:
+            sep: ','
+        target_col: Survived
+device:
+    value: cpu
+ent_coef:
+    value: 0.05
+env:
+    value:
+        max_steps: 10
+        penalty_error: -0.5
+        penalty_repetition: -1
+        render_mode: human
+ep_info_buffer:
+    value: deque([], maxlen=100)
+ep_success_buffer:
+    value: deque([], maxlen=100)
+experiment:
+    value:
+        n_episodes: 50
+        name: 09 Sequential Stable Baseline PPO
+        seed: 42
+        test_size: 0.25
+        total_timesteps: 5000
+gae_lambda:
+    value: 0.95
+gamma:
+    value: 0.99
+learning_rate:
+    value: 0.001
+lr_schedule:
+    value: <function get_schedule_fn.<locals>.<lambda> at 0x13e110680>
+max_grad_norm:
+    value: 0.5
+n_envs:
+    value: 1
+n_epochs:
+    value: 10
+n_steps:
+    value: 64
+normalize_advantage:
+    value: "True"
+num_timesteps:
+    value: 0
+observation_space:
+    value: 'Dict(''action_history'': Box(0.0, 1.0, (6,), float32), ''dataset_stats'': Box(0.0, inf, (5,), float32))'
+paths:
+    value:
+        data_dir: /Users/laureberti/Git/Learn2Clean_v2/data
+        figures_dir: /Users/laureberti/Git/Learn2Clean_v2/experiments/outputs/2026-02-05/16-48-47/figures
+        models_dir: /Users/laureberti/Git/Learn2Clean_v2/experiments/outputs/2026-02-05/16-48-47/models
+        output_dir: /Users/laureberti/Git/Learn2Clean_v2/experiments/outputs
+        project_root: /Users/laureberti/Git/Learn2Clean_v2
+        run_output_dir: /Users/laureberti/Git/Learn2Clean_v2/experiments/outputs/2026-02-05/16-48-47
+        tensorboard_root_dir: /Users/laureberti/Git/Learn2Clean_v2/experiments/outputs/tensorboard
+        wandb_dir: /Users/laureberti/Git/Learn2Clean_v2/experiments/outputs
+policy:
+    value: |-
+        MultiInputActorCriticPolicy(
+          (features_extractor): CombinedExtractor(
+            (extractors): ModuleDict(
+              (action_history): Flatten(start_dim=1, end_dim=-1)
+              (dataset_stats): Flatten(start_dim=1, end_dim=-1)
+            )
+          )
+          (pi_features_extractor): CombinedExtractor(
+            (extractors): ModuleDict(
+              (action_history): Flatten(start_dim=1, end_dim=-1)
+              (dataset_stats): Flatten(start_dim=1, end_dim=-1)
+            )
+          )
+          (vf_features_extractor): CombinedExtractor(
+            (extractors): ModuleDict(
+              (action_history): Flatten(start_dim=1, end_dim=-1)
+              (dataset_stats): Flatten(start_dim=1, end_dim=-1)
+            )
+          )
+          (mlp_extractor): MlpExtractor(
+            (policy_net): Sequential(
+              (0): Linear(in_features=11, out_features=64, bias=True)
+              (1): Tanh()
+              (2): Linear(in_features=64, out_features=64, bias=True)
+              (3): Tanh()
+            )
+            (value_net): Sequential(
+              (0): Linear(in_features=11, out_features=64, bias=True)
+              (1): Tanh()
+              (2): Linear(in_features=64, out_features=64, bias=True)
+              (3): Tanh()
+            )
+          )
+          (action_net): Linear(in_features=64, out_features=6, bias=True)
+          (value_net): Linear(in_features=64, out_features=1, bias=True)
+        )
+policy_class:
+    value: <class 'stable_baselines3.common.policies.MultiInputActorCriticPolicy'>
+policy_kwargs:
+    value: '{}'
+profiler:
+    value:
+        console_summary: true
+        dir: profiling_reports
+        enabled: true
+        html: true
+        json: false
+        minimal: true
+        title: Data Profile Report
+rollout_buffer:
+    value: <stable_baselines3.common.buffers.DictRolloutBuffer object at 0x13dd491c0>
+rollout_buffer_class:
+    value: <class 'stable_baselines3.common.buffers.DictRolloutBuffer'>
+rollout_buffer_kwargs:
+    value: '{}'
+sde_sample_freq:
+    value: -1
+seed:
+    value: 42
+start_time:
+    value: 1770306532297267000
+target_kl:
+    value: None
+tensorboard_log:
+    value: /Users/laureberti/Git/Learn2Clean_v2/experiments/outputs/tensorboard
+use_sde:
+    value: "False"
+verbose:
+    value: 1
+vf_coef:
+    value: 0.5
+wandb:
+    value:
+        dir: /Users/laureberti/Git/Learn2Clean_v2/experiments/outputs
+        group: null
+        job_type: null
+        mode: online
+        project: learn2clean
+        sync_tensorboard: true
+        tags: []

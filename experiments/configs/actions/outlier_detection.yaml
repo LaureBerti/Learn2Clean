@@ -1,0 +1,4 @@
+defaults:
+  - /action/outlier_detection/iqr@0
+  - /action/outlier_detection/lof@1
+  - /action/outlier_detection/z_score@2

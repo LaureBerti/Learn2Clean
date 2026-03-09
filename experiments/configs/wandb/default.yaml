@@ -1,0 +1,37 @@
+# ------------------------------------------------------------------------------
+# WEIGHTS & BIASES (WANDB) CONFIGURATION
+# ------------------------------------------------------------------------------
+# This file controls the logging behavior for experiments.
+# It is injected into wandb.init(**cfg.wandb) in the main script.
+# ------------------------------------------------------------------------------
+
+# The project name as it will appear in the WandB dashboard.
+# All runs with this config will be aggregated under this project.
+project: "learn2clean"
+
+# Execution mode. Options:
+# - "online":   Syncs logs to the cloud in real-time (requires internet).
+# - "offline":  Saves logs locally only (useful for clusters/no internet).
+#               Use 'wandb sync' later to upload.
+# - "disabled": Turns off all WandB logging completely (useful for quick debugging).
+mode: "online"
+
+# The root directory where local logs and artifacts will be stored.
+# WandB will automatically create a 'wandb/' subdirectory inside this path.
+#
+# Using '${oc.env:PROJECT_ROOT}' ensures logs are always stored in a fixed
+# location within the project structure, regardless of where the python
+# script is executed from.
+dir: ${paths.wandb_dir}
+
+# (Optional) A list of default tags to attach to the run.
+# Useful for filtering runs in the dashboard (e.g., ["benchmark", "v1"]).
+tags: []
+
+# (Optional) A string to group multiple runs together in the UI.
+# Useful for grouping cross-validation folds or distributed training runs.
+group: null
+
+# (Optional) The type of job (e.g., "train", "eval", "benchmark").
+# Helps separate different stages of a pipeline in the dashboard.
+job_type: null

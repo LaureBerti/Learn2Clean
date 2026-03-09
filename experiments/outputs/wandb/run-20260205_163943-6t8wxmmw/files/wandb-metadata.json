@@ -1,0 +1,28 @@
+{
+  "os":  "macOS-26.2-x86_64-i386-64bit",
+  "python":  "CPython 3.12.2",
+  "startedAt":  "2026-02-05T15:39:43.256992Z",
+  "program":  "/Users/laureberti/Git/Learn2Clean_v2/experiments/tutorials/06_sequential_gymnasium_env.py",
+  "codePath":  "experiments/tutorials/06_sequential_gymnasium_env.py",
+  "codePathLocal":  "06_sequential_gymnasium_env.py",
+  "git":  {
+    "remote":  "https://github.com/LaureBerti/Learn2Clean_v2.git",
+    "commit":  "5a490844ddbb112f622008c9c32faa1c943e4dbe"
+  },
+  "email":  "laure.berti@ird.fr",
+  "root":  "/Users/laureberti/Git/Learn2Clean_v2/experiments/outputs",
+  "host":  "new-mac.local",
+  "executable":  "/Users/laureberti/Git/Learn2Clean_v2/.venv/bin/python",
+  "cpu_count":  8,
+  "cpu_count_logical":  16,
+  "disk":  {
+    "/":  {
+      "total":  "4001907707904",
+      "used":  "594097483776"
+    }
+  },
+  "memory":  {
+    "total":  "68719476736"
+  },
+  "writerId":  "ptkaw1blnzzaulc2ictadwxyo0ussxc9"
+}

@@ -1,0 +1,8 @@
+defaults:
+  - /action/imputation/em@0
+  - /action/imputation/knn@1
+  - /action/imputation/mean@2
+  - /action/imputation/median@3
+  - /action/imputation/mf@4
+  - /action/imputation/mice@5
+  - /action/imputation/random@6

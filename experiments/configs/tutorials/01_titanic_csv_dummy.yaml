@@ -1,0 +1,51 @@
+# @package _global_
+# ------------------------------------------------------------------------------
+# HYDRA CONFIGURATION: TITANIC DUMMY TUTORIAL (SINGLE ACTION MODE)
+# ------------------------------------------------------------------------------
+#
+# OBJECTIVE:
+# Run a minimal experiment on the Titanic dataset using a SINGLE action.
+# This demonstrates the "Simple Mode"
+#
+# IMPORTANT:
+# The directive '# @package _global_' is crucial when this file is located
+# inside a subdirectory. It tells Hydra to flatten the configuration namespace
+# so parameters are accessible at the root level.
+
+defaults:
+  # --- 1. DATASET LOADING ---
+  # Load the Titanic CSV loader configuration into 'cfg.dataset'.
+  # The leading slash '/' indicates an absolute path from the 'configs' root.
+  - /dataset: titanic_csv
+
+  # --- 2. SINGLE ACTION SETUP ---
+  # We load the 'dummy' config from the 'action' group and map it
+  # directly to the 'action' key in the final configuration.
+  #
+  # Python equivalent:
+  #   cfg.action = DummyAddConfig(...)
+  #   action = instantiate(cfg.action)
+  - /action: dummy
+
+  # --- 3. EXPERIMENT BASELINE ---
+  # Load default protocols (seed, test_size) into 'cfg.experiment'.
+  - /experiment: default
+
+  # --- 4. UTILITIES ---
+  # Standard debugging settings.
+  - /hydra: debug
+
+  # Common and tools outputs paths for file and log generation.
+  - /paths: default
+
+  # --- 5. OVERRIDES ORDER ---
+  # '_self_' allows this file to override values defined in the defaults above.
+  - _self_
+
+# ------------------------------------------------------------------------------
+# CONFIGURATION OVERRIDES
+# ------------------------------------------------------------------------------
+
+experiment:
+  name: "01 Titanic CSV Dummy"
+

@@ -1,0 +1,2 @@
+defaults:
+  - /action/inconsistency_detection/pandera@0

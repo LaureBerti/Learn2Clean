@@ -1,0 +1,4 @@
+defaults:
+  - /action/deduplication/exact@0
+  - /action/deduplication/approximate@1
+  - /action/deduplication/jaccard@2

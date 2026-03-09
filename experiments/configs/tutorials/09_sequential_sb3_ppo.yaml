@@ -1,0 +1,35 @@
+# @package _global_
+# ------------------------------------------------------------------------------
+# TUTORIAL 09: 09 Sequential Stable Baseline PPO
+# ------------------------------------------------------------------------------
+
+defaults:
+  - default
+
+  # --- 2. ACTION SPACE ---
+  # Use tutorial_07 list of actions
+  - /actions: tutorial_07
+
+  # --- 2. Gymnasium Env configuration ---
+  - /env: sequential
+
+  - /agent: ppo_sequential
+  - _self_
+
+# ------------------------------------------------------------------------------
+# EXPERIMENT PARAMETERS
+# ------------------------------------------------------------------------------
+experiment:
+  name: "09 Sequential Stable Baseline PPO"
+  n_episodes: 50
+  total_timesteps: 5000
+
+agent:
+  params:
+    learning_rate: 0.001
+    n_steps: 64
+    batch_size: 16
+    ent_coef: 0.05
+
+wandb:
+  sync_tensorboard: True

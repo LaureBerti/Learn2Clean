@@ -1,0 +1,42 @@
+paths:
+  project_root: ${oc.env:PROJECT_ROOT}
+  data_dir: ${.project_root}/data
+  output_dir: ${oc.env:PROJECT_ROOT}/experiments/outputs
+  run_output_dir: ${hydra:runtime.output_dir}
+  tensorboard_root_dir: ${.output_dir}/tensorboard
+  models_dir: ${.run_output_dir}/models
+  figures_dir: ${.run_output_dir}/figures
+  wandb_dir: ${.output_dir}
+dataset:
+  _target_: learn2clean.loaders.OpenMLLoader
+  target_col: null
+  name: titanic
+  version: 1
+  data_id: null
+  parser: auto
+  fetch_kwargs: {}
+profiler:
+  enabled: true
+  minimal: true
+  title: Data Profile Report
+  dir: profiling_reports
+  html: true
+  json: false
+  console_summary: true
+experiment:
+  seed: 42
+  test_size: 0.25
+  name: 02 Titanic OpenML Dummy
+wandb:
+  project: learn2clean
+  mode: online
+  dir: ${paths.wandb_dir}
+  tags: []
+  group: null
+  job_type: null
+action:
+  _target_: learn2clean.actions.DummyAdd
+  name: DummyAdd5
+  columns: null
+  exclude: null
+  increment: 5

@@ -1,0 +1,207 @@
+paths:
+  project_root: ${oc.env:PROJECT_ROOT}
+  data_dir: ${.project_root}/data
+  output_dir: ${oc.env:PROJECT_ROOT}/experiments/outputs
+  run_output_dir: ${hydra:runtime.output_dir}
+  tensorboard_root_dir: ${.output_dir}/tensorboard
+  models_dir: ${.run_output_dir}/models
+  figures_dir: ${.run_output_dir}/figures
+  wandb_dir: ${.output_dir}
+dataset:
+  _target_: learn2clean.loaders.CSVLoader
+  target_col: Survived
+  file_path: null
+  dataset: titanic.csv
+  read_csv_kwargs:
+    sep: ','
+profiler:
+  enabled: true
+  minimal: true
+  title: Data Profile Report
+  dir: profiling_reports
+  html: true
+  json: false
+  console_summary: true
+experiment:
+  seed: 42
+  test_size: 0.25
+  name: 03 Titanic Benchmark
+wandb:
+  project: learn2clean
+  mode: online
+  dir: ${paths.wandb_dir}
+  tags: []
+  group: null
+  job_type: null
+actions:
+  '0':
+    _target_: learn2clean.actions.ChiSquareSelector
+    name: ChiSquareSelector
+    columns: null
+    exclude: null
+    k: 10
+  '1':
+    _target_: learn2clean.actions.LinearCorrelationSelector
+    name: LinearCorrelationSelector
+    columns: null
+    exclude: null
+    k: 10
+  '2':
+    _target_: learn2clean.actions.MutualInformationSelector
+    name: MutualInformationSelector
+    columns: null
+    exclude: null
+    k: 10
+    random_state: 42
+    n_neighbors: 3
+  '3':
+    _target_: learn2clean.actions.RandomForestSelector
+    name: RandomForestSelector
+    columns: null
+    exclude: null
+    n_estimators: 100
+    threshold: median
+    max_features: null
+    random_state: 42
+  '4':
+    _target_: learn2clean.actions.VarianceThresholdSelector
+    name: VarianceThresholdSelector
+    columns: null
+    exclude: null
+    threshold: 0.0
+  '5':
+    _target_: learn2clean.actions.DecimalScaler
+    name: DecimalScaler
+    columns: null
+    exclude: null
+  '6':
+    _target_: learn2clean.actions.Log10Scaler
+    name: Log10Scaler
+    columns: null
+    exclude: null
+    shift_epsilon: 1.0e-06
+  '7':
+    _target_: learn2clean.actions.MinMaxScaler
+    name: MinMaxScaler
+    columns: null
+    exclude: null
+  '8':
+    _target_: learn2clean.actions.QuantileScaler
+    name: QuantileScaler
+    columns: null
+    exclude: null
+    n_quantiles: 1000
+    output_distribution: uniform
+    ignore_implicit_zeros: false
+    subsample: 100000
+    random_state: null
+  '9':
+    _target_: learn2clean.actions.ZScoreScaler
+    name: ZScoreScaler
+    columns: null
+    exclude: null
+    with_mean: true
+    with_std: true
+  '10':
+    _target_: learn2clean.actions.ExactDeduplicator
+    name: ExactDeduplicator
+    columns: null
+    exclude: null
+    keep: first
+  '11':
+    _target_: learn2clean.actions.ApproximateDeduplicator
+    name: ApproximateDeduplicator
+    columns: null
+    exclude: null
+    threshold: 0.95
+    comparison_type: jarowinkler
+    keep: first
+    max_rows_limit: 10000
+  '12':
+    _target_: learn2clean.actions.cleaning.deduplication.jaccard_similarity_deduplicator.JaccardSimilarityDeduplicator
+    name: JaccardSimilarityDeduplicator
+    columns: null
+    exclude: null
+    threshold: 0.8
+    num_perm: 128
+    combine_columns: true
+    keep: first
+  '13':
+    _target_: learn2clean.actions.EMImputer
+    name: EMImputer
+    columns: null
+    exclude: null
+    max_iter: 20
+    tol: 0.001
+    random_state: null
+  '14':
+    _target_: learn2clean.actions.KNNImputer
+    name: KNNImputer
+    columns: null
+    exclude: null
+    n_neighbors: 5
+    weights: uniform
+    metric: nan_euclidean
+  '15':
+    _target_: learn2clean.actions.MeanImputer
+    name: MeanImputer
+    columns: null
+    exclude: null
+  '16':
+    _target_: learn2clean.actions.MedianImputer
+    name: MedianImputer
+    columns: null
+    exclude: null
+  '17':
+    _target_: learn2clean.actions.MFImputer
+    name: MFImputer
+    columns: null
+    exclude: null
+    rank: 10
+    max_iter: 200
+    random_state: null
+  '18':
+    _target_: learn2clean.actions.MICEImputer
+    name: MICEImputer
+    columns: null
+    exclude: null
+    max_iter: 50
+    random_state: 42
+  '19':
+    _target_: learn2clean.actions.RandomImputer
+    name: RandomImputer
+    columns: null
+    exclude: null
+    random_state: null
+  '20':
+    _target_: learn2clean.actions.PanderaSchemaValidator
+    name: PanderaSchemaValidator
+    columns: null
+    exclude: null
+    remove_inconsistent_rows: true
+    schema_config:
+      columns: {}
+  '21':
+    _target_: learn2clean.actions.IQROutlierCleaner
+    name: IQROutlierCleaner
+    columns: null
+    exclude: null
+    factor: 1.5
+    method: mask
+    numeric_only: true
+  '22':
+    _target_: learn2clean.actions.LocalOutlierFactorCleaner
+    name: LocalOutlierFactorCleaner
+    columns: null
+    exclude: null
+    n_neighbors: 20
+    contamination: auto
+    method: mask
+  '23':
+    _target_: learn2clean.actions.ZScoreOutlierCleaner
+    name: ZScoreOutlierCleaner
+    columns: null
+    exclude: null
+    threshold: 3.0
+    method: mask
+    numeric_only: true

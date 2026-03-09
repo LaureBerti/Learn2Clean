@@ -1,0 +1,47 @@
+# @package _global_
+# ------------------------------------------------------------------------------
+# HYDRA CONFIGURATION: TITANIC FULL BENCHMARK (ALL METRICS)
+# ------------------------------------------------------------------------------
+#
+# OBJECTIVE:
+# Run the most extensive benchmark possible on the Titanic dataset.
+# This configuration performs a "Many-to-Many" analysis:
+# 1. Actions: Loads ALL 24 cleaning techniques.
+# 2. Distances: Loads ALL 17 statistical measures (distances).
+#
+# USE CASE:
+# This allows for a granular comparison of cleaning strategies.
+# Instead of a single score, we generate a multidimensional "quality fingerprint"
+# for each action, answering questions like:
+# "Does KNN Imputation preserve feature correlation better than Mean Imputation,
+# even if it distorts the Wasserstein distance?"
+#
+# IMPORTANT:
+# The directive '# @package _global_' is crucial when this file is located
+# inside a subdirectory to flatten the configuration namespace.
+
+defaults:
+  - default
+
+  # --- 2. ACTION SPACE (CATALOG) ---
+  # Load the "Full Suite" of actions (Indices 0 to N).
+  # The benchmark script will iterate through every available tool.
+  - /actions: all
+
+  # --- 3. METRIC SUITE (FULL) ---
+  # Load the complete catalog of distance/quality metrics.
+  # This populates 'cfg.distances' with a list of all implemented measures
+  # (Wasserstein, Jensen-Shannon, Correlation Loss, Data Loss, etc.).
+  # This provides a holistic view of data alterations.
+  - /distances: all
+
+  # --- 7. OVERRIDES ORDER ---
+  # Allow this file to override defaults defined above.
+  - _self_
+
+# ------------------------------------------------------------------------------
+# EXPERIMENT METADATA
+# ------------------------------------------------------------------------------
+experiment:
+  # Name used for logging and WandB runs
+  name: "05 Titanic Wandb Benchmark Full"

@@ -1,0 +1,59 @@
+[tool.poetry]
+name = "Learn2Clean"
+packages = [{ include = "learn2clean", from = "src" }]
+version = "2.0.0"
+description = "Optimizing the Sequence of Tasks for Data Preparation and Cleaning"
+authors = ["Laure Berti"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.11, <3.14"
+datasets = "^4.5.0" # Hugging Face datasets loader for experiments and benchmarking.
+datasketch = "^1.8.0" # Probabilistic data structures for processing and searching very large datasets
+feature-engine = "^1.9.3" # Feature engineering and preprocessing tools for DataFrames.
+gymnasium = "^1.0.0" # Framework for building reinforcement-learning environments like Learn2CleanEnv.
+hydra-core = "^1.3.2" # Configuration management system for structured and dynamic experiments.
+kaggle = "^1.8.3" # API client to download datasets from Kaggle.
+kagglesdk = "^0.1.15" # Kaggle API SDK
+omegaconf = "^2.3.0" # YAML based hierarchical configuration system (used by Hydra)
+pandas = "^2.3.3" # Core DataFrame library used by all DataFrameActions.
+pandera = { extras = ["io"], version = "^0.28.1" } # Data validation (constraints and patterns) Inconsistency Detection. io is used for YAML/Hydra configuration.
+plotly = "^6.5.2" # graphing library makes interactive, publication-quality graphs.
+python-dotenv = "^1.2.1" # Loads environment variables from .env files.
+pyyaml = "^6.0.3" # YAML parsing used in configuration files.
+rapidfuzz = "^3.14.3" # Fast string matching library for string similarity calculations.
+recordlinkage = "^0.16" # provides most of the tools needed for record linkage and deduplication.
+requests = "^2.32.5" # HTTP client for retrieving remote datasets and API calls.
+rich = "^14.2.0" # Rich text and formatting in the terminal.
+scikit-learn = "^1.8.0" # Machine learning algorithms and preprocessing utilities.
+stable-baselines3 = "2.4.1" # Reinforcement learning algorithms (PPO/DQN) for training agents.
+statsmodels = "^0.14.6" # Statistical modeling, including OLS (Ordinary Least Squares) regression.
+tabulate = "^0.9.0" # Library for creating readable, formatted tables (e.g., Markdown, ASCII) from data.
+torch = "2.2.0" # Torch
+wandb = "^0.24.0" # Experiment tracking and visualization platform.
+weave = "^0.52.24" # Workflow tracing and observability utilities.
+
+ydata-profiling = "^4.18.1" # Automated data profiling reports for dataset quality analysis.
+# --- Version constraints for compatibility with ydata-profiling 4.18.0 ---
+matplotlib = ">=3.5, <=3.10" # Plotting library required for profiling and visualization.
+numpy = ">=1.22,<2.4" # Core numerical library used across all computations.
+seaborn = ">=0.10.1, <0.14" # Statistical visualization built on top of matplotlib.
+scipy = ">=1.8, <1.17" # provides algorithms for optimization, integration, interpolation, eigenvalue problems, algebraic equations, differential equations, statistics and many other classes of problems.
+typeguard = ">=4, <5" # Runtime type checking used by ydata-profiling.
+
+[tool.poetry.group.dev.dependencies]
+black = "^25.12.0" # Code formatter for consistent style.
+isort = "^7.0.0" # Automatic import sorting tool.
+mypy = "^1.19.1" # Static type checker for Python.
+pandas-stubs = "^2.3.3.260113" # Type stubs for pandas to improve IDE and mypy support.
+poetry-core = "^2.2.1" # Core build system components for Poetry.
+pytest = "^9.0.2" # Testing framework for unit tests.
+pytest-cov = "^7.0.0" # Coverage measurement plugin for pytest.
+pytest-mock = "^3.15.1" # pytest mockup plugin
+scipy-stubs = "^1.17.0.1" # Reliable type annotations for SciPy
+scikit-learn-stubs = "^0.0.3" # Type stubs for scikit-learn to improve static analysis.
+tensorboard = "^2.20.0" # Visualization and tooling needed for machine learning experimentation.
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,47 @@
+# @package _global_
+# ------------------------------------------------------------------------------
+# TUTORIAL 08: GYMNASIUM ENVIRONMENT SETUP (PERMUTATION / ONE-SHOT)
+# ------------------------------------------------------------------------------
+#
+# OBJECTIVE:
+# Wrap the dataset and the combinatorial action space into a specialized
+# Gymnasium Environment ('PermutationsCleaningEnv').
+#
+# Unlike the sequential tutorial (06), this setup models a "Contextual Bandit"
+# or "One-Shot" problem:
+#   1. The Agent observes the initial dataset state.
+#   2. The Agent selects ONE integer index (representing a full pipeline).
+#   3. The Environment executes the entire sequence and returns a final reward.
+#
+# KEY CONCEPTS:
+# 1. State: Statistical meta-features of the dataset (via DataStatsObserver).
+# 2. Action: An integer index mapped to a specific ordered pipeline of actions
+#            (e.g., Index 42 -> "Drop Rows -> Impute Mean").
+# 3. Reward: A trade-off score (Completeness vs. Retention) computed at the end.
+# ------------------------------------------------------------------------------
+
+defaults:
+  # Load the base configuration (paths, basic settings, dataset)
+  - default
+
+  # --- ACTION SPACE ---
+  # We reuse the specific set of 6 actions defined in Tutorial 07.
+  # This creates a search space of ~1,956 unique pipelines.
+  - /actions: tutorial_07
+
+  # --- ENVIRONMENT ---
+  # Loads the 'PermutationsCleaningEnv' settings (no max_steps needed here).
+  - /env: permutation
+
+  # --- UTILITIES ---
+  # Reset logging to default info level for clearer output.
+  - override /hydra: default
+
+  - _self_
+
+# ------------------------------------------------------------------------------
+# EXPERIMENT PARAMETERS
+# ------------------------------------------------------------------------------
+experiment:
+  name: "08 Permutation Gymnasium Env"
+  n_episodes: 20

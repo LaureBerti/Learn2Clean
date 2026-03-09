@@ -1,0 +1,25 @@
+# @package _global_
+# ------------------------------------------------------------------------------
+# DEFAULT EXPERIMENT CONFIGURATION
+# ------------------------------------------------------------------------------
+# This file defines the default hyperparameters and settings for the experimental
+# protocol. These values serve as a baseline and can be overridden by specific
+# experiment files (e.g., experiments/test_outliers.yaml) or via the CLI.
+
+# ------------------------------------------------------------------------------
+# REPRODUCIBILITY
+# ------------------------------------------------------------------------------
+# Global random seed used to initialize random number generators (RNGs)
+# for libraries like numpy, random, torch, and scikit-learn.
+# Setting a fixed seed ensures that the experiment yields the exact same
+# results (e.g., same data splits, same model initialization) every time it is run.
+seed: 42
+
+# ------------------------------------------------------------------------------
+# DATA SPLITTING
+# ------------------------------------------------------------------------------
+# The proportion of the dataset to reserve for the evaluation (test) set.
+# - 0.25: Represents 25% of the data for testing and 75% for training.
+# - This value is passed directly to sklearn.model_selection.train_test_split.
+# Must be a float between 0.0 and 1.0.
+test_size: 0.25

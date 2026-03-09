@@ -1,0 +1,20 @@
+# @package _global_
+defaults:
+  # 1. BASE CONFIGURATION
+  # Loads the standard scaffolding (Dataset loader, Paths, Hydra settings, WandB).
+  - default
+
+  # 2. ACTION SET SELECTION (Crucial)
+  # Instead of loading 'all' actions (which would create millions of permutations),
+  # we load a specific, smaller set defined in 'configs/actions/tutorial_07.yaml'.
+  # This set contains exactly 6 actions to demonstrate a space of ~1,956 pipelines.
+  - /actions: tutorial_07
+
+  # 3. OVERRIDE ORDER
+  - _self_
+
+# ------------------------------------------------------------------------------
+# EXPERIMENT PARAMETERS
+# ------------------------------------------------------------------------------
+experiment:
+  name: "07 Permutation Space"

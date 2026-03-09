@@ -1,0 +1,45 @@
+# @package _global_
+# ------------------------------------------------------------------------------
+# DQN AGENT CONFIGURATION (ONE-SHOT / BANDIT SETTING)
+# ------------------------------------------------------------------------------
+# https://stable-baselines3.readthedocs.io/en/master/modules/dqn.html
+# Optimized for the 'Permutation' environment where the agent makes a single
+# decision (selects a full pipeline) per episode.
+# ------------------------------------------------------------------------------
+
+agent:
+  name: "DQN (Permutation)"
+
+  # POLICY ARCHITECTURE [CRITICAL]
+  # We MUST use "MultiInputPolicy" because the Permutation Environment returns
+  # a Dictionary observation (containing 'dataset_stats').
+  # The standard "MlpPolicy" only accepts flat arrays and would crash.
+  policy: "MultiInputPolicy"
+
+  params:
+    verbose: 1
+    device: "auto"
+
+    # --- BANDIT SPECIFIC SETTINGS ---
+    # In a One-Shot environment, the episode ends immediately after 1 step.
+    # There is no "future" to look forward to.
+    # Therefore, the discount factor (gamma) MUST be 0.0 to ignore future rewards.
+    gamma: 0.0
+
+    # --- NETWORK UPDATES ---
+    learning_rate: 0.001       # 1e-3: Aggressive learning rate (standard for DQN).
+    batch_size: 32
+    buffer_size: 10000         # Replay Buffer: Large enough to store 10,000 trials.
+    learning_starts: 100       # Warmup: Collect 100 random trials before training starts.
+
+    # FREQUENCY NOTE: In this env, 1 Step = 1 Episode.
+    train_freq: 4              # Train the network every 4 steps (i.e., every 4 episodes).
+    gradient_steps: 1          # Perform 1 gradient descent step per update.
+    target_update_interval: 50 # Stabilize training by syncing the target network every 50 steps.
+
+    # --- EXPLORATION (Epsilon-Greedy) ---
+    # The permutation space is large (~2000 unique pipelines).
+    # We need aggressive exploration to find the best pipeline logic.
+    # Start by exploring 50% of the time, decaying progressively to 5%.
+    exploration_fraction: 0.5
+    exploration_final_eps: 0.05

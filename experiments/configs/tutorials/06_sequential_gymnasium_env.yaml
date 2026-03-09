@@ -1,0 +1,39 @@
+# @package _global_
+# ------------------------------------------------------------------------------
+# TUTORIAL 06: SEQUENTIAL GYMNASIUM ENVIRONMENT SETUP
+# ------------------------------------------------------------------------------
+#
+# OBJECTIVE:
+# Wrap the dataset and the action space into a standard Gymnasium Environment
+# (SequentialCleaningEnv). This allows an Agent (Random, Q-Learning, PPO, etc.)
+# to interact with the data via the standard API:
+#   observation, reward, done, info = env.step(action)
+#
+# KEY CONCEPTS:
+# 1. State: A representation of the dataset (action history).
+# 2. Action: One of the cleaning tools loaded from the 'actions' config.
+# 3. Reward: Calculated by the custom 'CompletenessReward' class.
+# ------------------------------------------------------------------------------
+
+defaults:
+  # Load the base configuration (paths, basic settings, dataset)
+  - default
+
+  # --- 2. ACTION SPACE ---
+  # Load the available cleaning actions (Imputation, Drop, Encoding, etc.)
+  # 'all' loads every action defined in configs/actions/all.yaml
+  - /actions: all
+
+  # --- 2. Gymnasium Env configuration ---
+  - /env: sequential
+  # display log INFO
+  - override /hydra: default
+
+  # Allow overriding parameters in this file
+  - _self_
+
+# ------------------------------------------------------------------------------
+# EXPERIMENT PARAMETERS
+# ------------------------------------------------------------------------------
+experiment:
+  name: "06 Sequential Gymnasium Env"

@@ -1,0 +1,10 @@
+# @package _global_
+
+defaults:
+  - /paths: default
+  - /dataset: titanic_csv
+  - /profiler: default
+  - /experiment: default
+  - /hydra: default
+  - /wandb: default
+  - _self_

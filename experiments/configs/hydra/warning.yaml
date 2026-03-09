@@ -1,0 +1,6 @@
+defaults:
+  - default
+
+job_logging:
+    root:
+      level: WARNING

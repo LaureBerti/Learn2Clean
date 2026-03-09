@@ -1,0 +1,6 @@
+defaults:
+  - /action/feature_selection/chi_square@0
+  - /action/feature_selection/linear_correlation@1
+  - /action/feature_selection/mutual_info@2
+  - /action/feature_selection/random_forest@3
+  - /action/feature_selection/variance_threshold@4

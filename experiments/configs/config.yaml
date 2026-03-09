@@ -1,0 +1,6 @@
+defaults:
+  - paths: default
+  - dataset: titanic_csv
+  - hydra: default
+  - _self_
+

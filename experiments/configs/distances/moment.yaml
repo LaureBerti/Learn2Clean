@@ -1,0 +1,9 @@
+defaults:
+  - /distance/skewness_mean@0
+  - /distance/skewness_max@1
+  - /distance/skewness_median@2
+  - /distance/kurtosis_mean@3
+  - /distance/kurtosis_max@4
+  - /distance/kurtosis_median@5
+  - /distance/variance_mean@6
+  - /distance/variance_max@7

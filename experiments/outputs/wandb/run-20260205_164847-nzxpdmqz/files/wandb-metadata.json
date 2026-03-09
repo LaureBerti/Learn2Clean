@@ -1,0 +1,28 @@
+{
+  "os":  "macOS-26.2-x86_64-i386-64bit",
+  "python":  "CPython 3.12.2",
+  "startedAt":  "2026-02-05T15:48:47.914911Z",
+  "program":  "/Users/laureberti/Git/Learn2Clean_v2/experiments/tutorials/09_sequential_sb3_ppo.py",
+  "codePath":  "experiments/tutorials/09_sequential_sb3_ppo.py",
+  "codePathLocal":  "09_sequential_sb3_ppo.py",
+  "git":  {
+    "remote":  "https://github.com/LaureBerti/Learn2Clean_v2.git",
+    "commit":  "5a490844ddbb112f622008c9c32faa1c943e4dbe"
+  },
+  "email":  "laure.berti@ird.fr",
+  "root":  "/Users/laureberti/Git/Learn2Clean_v2/experiments/outputs",
+  "host":  "new-mac.local",
+  "executable":  "/Users/laureberti/Git/Learn2Clean_v2/.venv/bin/python",
+  "cpu_count":  8,
+  "cpu_count_logical":  16,
+  "disk":  {
+    "/":  {
+      "total":  "4001907707904",
+      "used":  "594137571328"
+    }
+  },
+  "memory":  {
+    "total":  "68719476736"
+  },
+  "writerId":  "0l5hsv1woknjxxmvh3gyza18crwko0at"
+}

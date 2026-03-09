@@ -1,0 +1,6 @@
+defaults:
+  - openml
+  - _self_
+
+name: iris
+version: 1

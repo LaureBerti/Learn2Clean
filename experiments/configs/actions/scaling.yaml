@@ -1,0 +1,6 @@
+defaults:
+  - /action/scaling/decimal@0
+  - /action/scaling/log10@1
+  - /action/scaling/min_max@2
+  - /action/scaling/quantile@3
+  - /action/scaling/z_score@4

@@ -1,0 +1,79 @@
+paths:
+  project_root: ${oc.env:PROJECT_ROOT}
+  data_dir: ${.project_root}/data
+  output_dir: ${oc.env:PROJECT_ROOT}/experiments/outputs
+  run_output_dir: ${hydra:runtime.output_dir}
+  tensorboard_root_dir: ${.output_dir}/tensorboard
+  models_dir: ${.run_output_dir}/models
+  figures_dir: ${.run_output_dir}/figures
+  wandb_dir: ${.output_dir}
+dataset:
+  _target_: learn2clean.loaders.CSVLoader
+  target_col: Survived
+  file_path: null
+  dataset: titanic.csv
+  read_csv_kwargs:
+    sep: ','
+profiler:
+  enabled: true
+  minimal: true
+  title: Data Profile Report
+  dir: profiling_reports
+  html: true
+  json: false
+  console_summary: true
+experiment:
+  seed: 42
+  test_size: 0.25
+  name: 08 Permutation Gymnasium Env
+  n_episodes: 20
+wandb:
+  project: learn2clean
+  mode: online
+  dir: ${paths.wandb_dir}
+  tags: []
+  group: null
+  job_type: null
+actions:
+  '0':
+    _target_: learn2clean.actions.ExactDeduplicator
+    name: ExactDeduplicator
+    columns: null
+    exclude: null
+    keep: first
+  '1':
+    _target_: learn2clean.actions.MeanImputer
+    name: MeanImputer
+    columns: null
+    exclude: null
+  '2':
+    _target_: learn2clean.actions.MFImputer
+    name: MFImputer
+    columns: null
+    exclude: null
+    rank: 10
+    max_iter: 200
+    random_state: null
+  '3':
+    _target_: learn2clean.actions.MinMaxScaler
+    name: MinMaxScaler
+    columns: null
+    exclude: null
+  '4':
+    _target_: learn2clean.actions.ZScoreScaler
+    name: ZScoreScaler
+    columns: null
+    exclude: null
+    with_mean: true
+    with_std: true
+  '5':
+    _target_: learn2clean.actions.IQROutlierCleaner
+    name: IQROutlierCleaner
+    columns: null
+    exclude: null
+    factor: 1.5
+    method: mask
+    numeric_only: true
+env:
+  render_mode: human
+  penalty_error: -0.5

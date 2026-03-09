@@ -1,0 +1,318 @@
+_wandb:
+    value:
+        cli_version: 0.24.0
+        code_path: code/experiments/tutorials/05_titanic_wandb_benchmark_full.py
+        e:
+            cl3rb7teqp97jjq1286hpsllbp72blkx:
+                codePath: experiments/tutorials/05_titanic_wandb_benchmark_full.py
+                codePathLocal: 05_titanic_wandb_benchmark_full.py
+                cpu_count: 8
+                cpu_count_logical: 16
+                disk:
+                    /:
+                        total: "4001907707904"
+                        used: "593276678144"
+                email: laure.berti@ird.fr
+                executable: /Users/laureberti/Git/Learn2Clean_v2/.venv/bin/python
+                git:
+                    commit: 5a490844ddbb112f622008c9c32faa1c943e4dbe
+                    remote: https://github.com/LaureBerti/Learn2Clean_v2.git
+                host: new-mac.local
+                memory:
+                    total: "68719476736"
+                os: macOS-26.2-x86_64-i386-64bit
+                program: /Users/laureberti/Git/Learn2Clean_v2/experiments/tutorials/05_titanic_wandb_benchmark_full.py
+                python: CPython 3.12.2
+                root: /Users/laureberti/Git/Learn2Clean_v2/experiments/outputs
+                startedAt: "2026-02-05T13:31:34.264175Z"
+                writerId: cl3rb7teqp97jjq1286hpsllbp72blkx
+        m: []
+        python_version: 3.12.2
+        t:
+            "1":
+                - 1
+                - 5
+                - 49
+                - 50
+                - 51
+                - 53
+            "2":
+                - 1
+                - 5
+                - 49
+                - 50
+                - 51
+                - 53
+            "3":
+                - 2
+                - 13
+                - 15
+                - 16
+            "4": 3.12.2
+            "5": 0.24.0
+            "12": 0.24.0
+            "13": darwin-x86_64
+actions:
+    value:
+        "0":
+            _target_: learn2clean.actions.ChiSquareSelector
+            columns: null
+            exclude: null
+            k: 10
+            name: ChiSquareSelector
+        "1":
+            _target_: learn2clean.actions.LinearCorrelationSelector
+            columns: null
+            exclude: null
+            k: 10
+            name: LinearCorrelationSelector
+        "2":
+            _target_: learn2clean.actions.MutualInformationSelector
+            columns: null
+            exclude: null
+            k: 10
+            n_neighbors: 3
+            name: MutualInformationSelector
+            random_state: 42
+        "3":
+            _target_: learn2clean.actions.RandomForestSelector
+            columns: null
+            exclude: null
+            max_features: null
+            n_estimators: 100
+            name: RandomForestSelector
+            random_state: 42
+            threshold: median
+        "4":
+            _target_: learn2clean.actions.VarianceThresholdSelector
+            columns: null
+            exclude: null
+            name: VarianceThresholdSelector
+            threshold: 0
+        "5":
+            _target_: learn2clean.actions.DecimalScaler
+            columns: null
+            exclude: null
+            name: DecimalScaler
+        "6":
+            _target_: learn2clean.actions.Log10Scaler
+            columns: null
+            exclude: null
+            name: Log10Scaler
+            shift_epsilon: 1e-06
+        "7":
+            _target_: learn2clean.actions.MinMaxScaler
+            columns: null
+            exclude: null
+            name: MinMaxScaler
+        "8":
+            _target_: learn2clean.actions.QuantileScaler
+            columns: null
+            exclude: null
+            ignore_implicit_zeros: false
+            n_quantiles: 1000
+            name: QuantileScaler
+            output_distribution: uniform
+            random_state: null
+            subsample: 100000
+        "9":
+            _target_: learn2clean.actions.ZScoreScaler
+            columns: null
+            exclude: null
+            name: ZScoreScaler
+            with_mean: true
+            with_std: true
+        "10":
+            _target_: learn2clean.actions.ExactDeduplicator
+            columns: null
+            exclude: null
+            keep: first
+            name: ExactDeduplicator
+        "11":
+            _target_: learn2clean.actions.ApproximateDeduplicator
+            columns: null
+            comparison_type: jarowinkler
+            exclude: null
+            keep: first
+            max_rows_limit: 10000
+            name: ApproximateDeduplicator
+            threshold: 0.95
+        "12":
+            _target_: learn2clean.actions.cleaning.deduplication.jaccard_similarity_deduplicator.JaccardSimilarityDeduplicator
+            columns: null
+            combine_columns: true
+            exclude: null
+            keep: first
+            name: JaccardSimilarityDeduplicator
+            num_perm: 128
+            threshold: 0.8
+        "13":
+            _target_: learn2clean.actions.EMImputer
+            columns: null
+            exclude: null
+            max_iter: 20
+            name: EMImputer
+            random_state: null
+            tol: 0.001
+        "14":
+            _target_: learn2clean.actions.KNNImputer
+            columns: null
+            exclude: null
+            metric: nan_euclidean
+            n_neighbors: 5
+            name: KNNImputer
+            weights: uniform
+        "15":
+            _target_: learn2clean.actions.MeanImputer
+            columns: null
+            exclude: null
+            name: MeanImputer
+        "16":
+            _target_: learn2clean.actions.MedianImputer
+            columns: null
+            exclude: null
+            name: MedianImputer
+        "17":
+            _target_: learn2clean.actions.MFImputer
+            columns: null
+            exclude: null
+            max_iter: 200
+            name: MFImputer
+            random_state: null
+            rank: 10
+        "18":
+            _target_: learn2clean.actions.MICEImputer
+            columns: null
+            exclude: null
+            max_iter: 50
+            name: MICEImputer
+            random_state: 42
+        "19":
+            _target_: learn2clean.actions.RandomImputer
+            columns: null
+            exclude: null
+            name: RandomImputer
+            random_state: null
+        "20":
+            _target_: learn2clean.actions.PanderaSchemaValidator
+            columns: null
+            exclude: null
+            name: PanderaSchemaValidator
+            remove_inconsistent_rows: true
+        "21":
+            _target_: learn2clean.actions.IQROutlierCleaner
+            columns: null
+            exclude: null
+            factor: 1.5
+            method: mask
+            name: IQROutlierCleaner
+            numeric_only: true
+        "22":
+            _target_: learn2clean.actions.LocalOutlierFactorCleaner
+            columns: null
+            contamination: auto
+            exclude: null
+            method: mask
+            n_neighbors: 20
+            name: LocalOutlierFactorCleaner
+        "23":
+            _target_: learn2clean.actions.ZScoreOutlierCleaner
+            columns: null
+            exclude: null
+            method: mask
+            name: ZScoreOutlierCleaner
+            numeric_only: true
+            threshold: 3
+dataset:
+    value:
+        _target_: learn2clean.loaders.CSVLoader
+        dataset: titanic.csv
+        file_path: null
+        read_csv_kwargs:
+            sep: ','
+        target_col: Survived
+distances:
+    value:
+        "0":
+            _target_: learn2clean.distance.wasserstein.WassersteinDistance
+            name: null
+        "1":
+            _target_: learn2clean.distance.kullback_leibler.KullbackLeiblerDistance
+            name: null
+        "2":
+            _target_: learn2clean.distance.jensen_shannon.JensenShannonDistance
+            name: null
+        "3":
+            _target_: learn2clean.distance.chi_squared.ChiSquaredDistance
+            name: null
+        "4":
+            _target_: learn2clean.distance.histogram_intersection.HistogramIntersectionDistance
+            name: null
+        "5":
+            _target_: learn2clean.distance.histogram_correlation.HistogramCorrelationDistance
+            name: null
+        "6":
+            _target_: learn2clean.distance.skewness.MeanSkewnessDistance
+            name: null
+        "7":
+            _target_: learn2clean.distance.skewness.MaxSkewnessDistance
+            name: null
+        "8":
+            _target_: learn2clean.distance.skewness.MedianSkewnessDistance
+            name: null
+        "9":
+            _target_: learn2clean.distance.kurtosis.MeanKurtosisDistance
+            name: null
+        "10":
+            _target_: learn2clean.distance.kurtosis.MaxKurtosisDistance
+            name: null
+        "11":
+            _target_: learn2clean.distance.kurtosis.MedianKurtosisDistance
+            name: null
+        "12":
+            _target_: learn2clean.distance.variance.MeanVarianceDistance
+            name: null
+        "13":
+            _target_: learn2clean.distance.variance.MaxVarianceDistance
+            name: null
+        "14":
+            _target_: learn2clean.distance.correlation_matrix.CorrelationMatrixDistance
+            name: null
+        "15":
+            _target_: learn2clean.distance.missingness.MissingnessRatioDistance
+            name: null
+        "16":
+            _target_: learn2clean.distance.row_count.RowCountDistance
+            name: null
+experiment:
+    value:
+        name: 05 Titanic Wandb Benchmark Full
+        seed: 42
+        test_size: 0.25
+paths:
+    value:
+        data_dir: /Users/laureberti/Git/Learn2Clean_v2/data
+        figures_dir: /Users/laureberti/Git/Learn2Clean_v2/experiments/outputs/2026-02-05/14-31-33/figures
+        models_dir: /Users/laureberti/Git/Learn2Clean_v2/experiments/outputs/2026-02-05/14-31-33/models
+        output_dir: /Users/laureberti/Git/Learn2Clean_v2/experiments/outputs
+        project_root: /Users/laureberti/Git/Learn2Clean_v2
+        run_output_dir: /Users/laureberti/Git/Learn2Clean_v2/experiments/outputs/2026-02-05/14-31-33
+        tensorboard_root_dir: /Users/laureberti/Git/Learn2Clean_v2/experiments/outputs/tensorboard
+        wandb_dir: /Users/laureberti/Git/Learn2Clean_v2/experiments/outputs
+profiler:
+    value:
+        console_summary: true
+        dir: profiling_reports
+        enabled: true
+        html: true
+        json: false
+        minimal: true
+        title: Data Profile Report
+wandb:
+    value:
+        dir: /Users/laureberti/Git/Learn2Clean_v2/experiments/outputs
+        group: null
+        job_type: null
+        mode: online
+        project: learn2clean
+        tags: []

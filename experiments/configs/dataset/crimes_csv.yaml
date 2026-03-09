@@ -1,0 +1,8 @@
+defaults:
+  - csv
+  - _self_
+
+dataset: crimes.csv
+target_col: "crimepredict"
+read_csv_kwargs:
+  sep: ","

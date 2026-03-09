@@ -1,0 +1,14 @@
+# @package _global_
+
+defaults:
+  - default
+  - /paths: default
+  - /hydra: default
+  - /dataset: titanic_csv
+  - /actions: essentials
+  - /env: permutation
+  - /agent: dqn_permutation
+  - _self_
+
+name: "my experiment"
+n_episodes: 2000

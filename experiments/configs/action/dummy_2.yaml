@@ -1,0 +1,7 @@
+defaults:
+  - dummy  # 1. Inherit from the Python config registered as "dummy"
+  - _self_ # 2. Apply overrides defined in this file afterward
+
+# Only override specific fields here
+increment: 2
+name: DummyAdd2

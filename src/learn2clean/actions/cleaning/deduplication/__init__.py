@@ -1,0 +1,3 @@
+from .approximative_deduplicator import ApproximateDeduplicator
+from .exact_deduplicator import ExactDeduplicator
+from .jaccard_similarity_deduplicator import JaccardSimilarityDeduplicator

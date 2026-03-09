@@ -1,0 +1,21 @@
+# experiments/configs/actions/essentials.yaml
+# ------------------------------------------------------------------------------
+# ACTION SET: ESSENTIALS (The Survival Kit)
+# ------------------------------------------------------------------------------
+# A minimal set of 4 actions.
+# FOCUS: Speed and Stability.
+# SUITABLE FOR: Debugging, CI/CD tests, and initial RL agent warmup.
+# ------------------------------------------------------------------------------
+
+defaults:
+  # 1. Clean Duplicates (Safe hygiene)
+  - /action/deduplication/exact@0
+
+  # 2. Impute Numerics (Fast & Simple)
+  - /action/imputation/mean@1
+
+  # 3. Impute Categorical (Fast & Simple)
+  - /action/imputation/mf@2  # Most Frequent
+
+  # 4. Scale (Standard requirement for many models)
+  - /action/scaling/min_max@3

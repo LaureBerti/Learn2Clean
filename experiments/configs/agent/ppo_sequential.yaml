@@ -1,0 +1,49 @@
+# @package _global_
+# ------------------------------------------------------------------------------
+# PPO AGENT CONFIGURATION (SEQUENTIAL DECISION MAKING)
+# ------------------------------------------------------------------------------
+# https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html
+# This configuration defines the hyperparameters for the PPO algorithm,
+# optimized for multi-step data cleaning episodes.
+# ------------------------------------------------------------------------------
+
+agent:
+  name: "PPO (Sequential)"
+
+  # POLICY ARCHITECTURE
+  # We MUST use "MultiInputPolicy" because our observation space is a Dict:
+  #   1. 'dataset_stats' (Current state of the data)
+  #   2. 'action_history' (What did we do previously?)
+  # The standard "MlpPolicy" cannot merge these distinct inputs.
+  policy: "MultiInputPolicy"
+
+  # HYPERPARAMETERS
+  params:
+    verbose: 1             # 0=Silent, 1=Info, 2=Debug
+
+    learning_rate: 0.0003  # 3e-4: The Gold Standard starting point for PPO.
+
+    # ROLLOUT LENGTH (Optimized for Tutorial Speed)
+    # Default PPO uses 2048 steps. We reduce this to 128.
+    # REASONING:
+    #   - Our episodes are short (Max 10 steps).
+    #   - 128 steps means the agent fills its buffer and updates the network
+    #     every ~12 episodes (128 / 10).
+    #   - This gives the user faster feedback loops than waiting for 200+ episodes.
+    n_steps: 128
+
+    batch_size: 32         # Mini-batch size. Must be a factor of n_steps.
+                           # 128 / 32 = 4 updates per rollout.
+
+    gamma: 0.99            # Discount Factor.
+                           # 0.99 means the agent cares strongly about future consequences.
+                           # Essential here because an early 'Imputation' action enables
+                           # a later 'Scaling' action to succeed.
+
+    gae_lambda: 0.95       # Generalized Advantage Estimation (Bias-Variance trade-off).
+
+    ent_coef: 0.01         # Entropy Coefficient (Exploration Bonus).
+                           # A value of 1% encourages the agent to try different actions
+                           # rather than getting stuck in a local optimum (like "Do Nothing").
+
+    device: "auto"         # Uses GPU/MPS if available, CPU otherwise.

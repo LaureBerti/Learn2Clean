@@ -1,0 +1,28 @@
+# experiments/configs/actions/advanced_optimization.yaml
+# ------------------------------------------------------------------------------
+# ACTION SET: ADVANCED OPTIMIZATION
+# ------------------------------------------------------------------------------
+# A heavy set of 8 actions focused on maximizing model accuracy.
+# FOCUS: Feature Selection and Advanced Statistical Methods.
+# COST: High computational time. The agent receives a penalty if it acts slowly.
+# ------------------------------------------------------------------------------
+
+defaults:
+  # --- Advanced Imputation ---
+  - /action/imputation/knn@0      # Better than Mean, but slower
+  - /action/imputation/mice@1     # Statistically robust
+
+  # --- Advanced Scaling ---
+  - /action/scaling/log10@2       # Good for skewed distributions (Fare)
+  - /action/scaling/quantile@3    # Good for non-normal distributions
+
+  # --- Feature Selection (Dimensionality Reduction) ---
+  # The agent must learn to use these ONLY if there are useless columns.
+  - /action/feature_selection/linear_correlation@4
+  - /action/feature_selection/random_forest@5
+
+  # --- Outliers ---
+  - /action/outlier_detection/lof@6 # Local Outlier Factor (Advanced)
+
+  # --- Safety Net ---
+  - /action/imputation/mean@7     # Fallback if advanced methods fail

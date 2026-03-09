@@ -1,0 +1,44 @@
+# ------------------------------------------------------------------------------
+# ACTION SPACE CONFIGURATION: Titanic Permutation Tutorial (07)
+# ------------------------------------------------------------------------------
+# This configuration defines a specific set of 6 atomic actions designed to create
+# an interesting combinatorial search space (~720 possible pipelines).
+#
+# OBJECTIVE:
+# These actions are chosen to introduce dependencies and potential conflicts,
+# forcing the agent to learn the correct logical order (e.g., Imputation must
+# often occur before Scaling).
+# ------------------------------------------------------------------------------
+
+defaults:
+  # --- STEP 1: HYGIENE ---
+  # A safe, standard starting step. Removes duplicate rows to prevent bias.
+  # Strategy: Usually safe to place anywhere, but optimal at the start.
+  - /action/deduplication/exact@0
+
+  # --- STEP 2: NUMERICAL HANDLING (Target: 'Age', 'Fare') ---
+  # CRITICAL DEPENDENCY: The Titanic dataset contains missing values in 'Age'.
+  # If the agent puts Scaling actions BEFORE this Mean Imputer, the pipeline
+  # might crash or propagate NaNs, resulting in a low reward.
+  - /action/imputation/mean@1
+
+  # --- STEP 3: CATEGORICAL HANDLING (Target: 'Embarked') ---
+  # COMPLEMENTARY ACTION: Mean Imputation cannot handle string columns.
+  # This action is required to reach 100% completeness on categorical features.
+  # It demonstrates that different data types require specific treatments.
+  - /action/imputation/mf@2
+
+  # --- STEP 4 & 5: SCALING CHOICES (Conflict & Redundancy) ---
+  # These two actions create a "Choice" for the agent:
+  # 1. Redundancy: Applying both is often unnecessary.
+  # 2. Sensitivity: MinMax is sensitive to outliers; Z-Score expects a Gaussian.
+  # 3. Crash Risk: Z-Score often fails if NaNs are still present (enforcing the order constraint).
+  - /action/scaling/min_max@3
+  - /action/scaling/z_score@4
+
+  # --- STEP 6: THE "WILDCARD" (Outlier Removal) ---
+  # TRADE-OFF ACTION: Removing outliers (IQR) cleans distribution but deletes data.
+  # - If done BEFORE imputation: It might skew the mean calculation.
+  # - If done too aggressively: It removes valuable signals (e.g., rich passengers survived).
+  # This action introduces variance in the reward, testing the "Quality vs. Quantity" balance.
+  - /action/outlier_detection/iqr@5

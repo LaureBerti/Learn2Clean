@@ -1,0 +1,53 @@
+# @package _global_
+# ------------------------------------------------------------------------------
+# HYDRA CONFIGURATION: TITANIC DUMMY TUTORIAL (OPENML VARIATION)
+# ------------------------------------------------------------------------------
+#
+# OBJECTIVE:
+# Run a simple experiment on the Titanic dataset fetched from OpenML.
+# This tutorial demonstrates two key Hydra features:
+# 1. Swapping the Dataset Source (CSV -> OpenML) just by changing one line.
+# 2. Overriding default Action parameters directly in the experiment file.
+#
+# IMPORTANT:
+# The directive '# @package _global_' is crucial when this file is located
+# inside a subdirectory (e.g., 'configs/tutorials/'). It tells Hydra to
+# flatten the configuration namespace so parameters are accessible at the root level.
+
+defaults:
+  # --- 1. USE TUTORIALS DEFAULTS ---
+  - default
+
+  # --- 2. ACTION SELECTION ---
+  # We load the 'dummy' action configuration.
+  # This creates a 'cfg.action' object (Single Action Mode).
+  - /action: dummy
+
+  # --- 1. DATASET SELECTION ---
+  # Here we switch to the OpenML loader instead of the local CSV loader used in tutorial 01.
+  # Note: The leading slash '/' indicates an absolute path from the 'configs' root.
+  - override /dataset: titanic_openml
+
+  # --- 4. UTILITIES ---
+  # Standard debugging settings (logging, verbose).
+  - override /hydra: default
+
+  # --- 5. OVERRIDES ORDER ---
+  # '_self_' represents the content of this specific file.
+  # Placing it last allows us to overwrite values defined in the defaults above.
+  - _self_
+
+# ------------------------------------------------------------------------------
+# EXPERIMENT METADATA
+# ------------------------------------------------------------------------------
+experiment:
+  name: "02 Titanic OpenML Dummy"
+
+# ------------------------------------------------------------------------------
+# PARAMETER OVERRIDES
+# ------------------------------------------------------------------------------
+# We customize the action loaded above without changing the original 'dummy.yaml' file.
+# This demonstrates the power of Hydra's hierarchical configuration.
+action:
+  name: "DummyAdd5"  # Giving a specific name for logs
+  increment: 5       # Changing behavior: Add 5 instead of the default 1

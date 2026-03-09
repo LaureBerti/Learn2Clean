@@ -1,0 +1,69 @@
+# ------------------------------------------------------------------------------
+# ACTION SPACE CONFIGURATION: FULL SUITE
+# ------------------------------------------------------------------------------
+# This file defines the complete discrete action space available to the RL agent.
+# It aggregates all implemented data cleaning and preparation techniques into
+# a single indexed list.
+#
+# TOTAL ACTIONS: 24 (Indices 0 to 23)
+#
+# USAGE:
+# The syntax '/path/to/config@actions.N' performs two things:
+# 1. Imports the specific action configuration (e.g., mean imputation).
+# 2. Assigns it to a specific index (N) in the 'actions' list of the main config.
+# ------------------------------------------------------------------------------
+
+defaults:
+  # ============================================================================
+  # 1. FEATURE SELECTION (Indices 0-4)
+  # Techniques to reduce dimensionality and select relevant features.
+  # ============================================================================
+  - /action/feature_selection/chi_square@0
+  - /action/feature_selection/linear_correlation@1
+  - /action/feature_selection/mutual_info@2
+  - /action/feature_selection/random_forest@3
+  - /action/feature_selection/variance_threshold@4
+
+  # ============================================================================
+  # 2. SCALING & NORMALIZATION (Indices 5-9)
+  # Techniques to adjust the range of feature values.
+  # ============================================================================
+  - /action/scaling/decimal@5
+  - /action/scaling/log10@6
+  - /action/scaling/min_max@7
+  - /action/scaling/quantile@8
+  - /action/scaling/z_score@9
+
+  # ============================================================================
+  # 3. DEDUPLICATION (Indices 10-12)
+  # Techniques to identify and remove duplicate records.
+  # ============================================================================
+  - /action/deduplication/exact@10
+  - /action/deduplication/approximate@11
+  - /action/deduplication/jaccard@12
+
+  # ============================================================================
+  # 4. MISSING VALUE IMPUTATION (Indices 13-19)
+  # Strategies to fill NaN/None values in the dataset.
+  # ============================================================================
+  - /action/imputation/em@13
+  - /action/imputation/knn@14
+  - /action/imputation/mean@15
+  - /action/imputation/median@16
+  - /action/imputation/mf@17
+  - /action/imputation/mice@18
+  - /action/imputation/random@19
+
+  # ============================================================================
+  # 5. INCONSISTENCY DETECTION (Index 20)
+  # Schema validation and logic checks.
+  # ============================================================================
+  - /action/inconsistency_detection/pandera@20
+
+  # ============================================================================
+  # 6. OUTLIER DETECTION & REMOVAL (Indices 21-23)
+  # Techniques to identify and handle statistical anomalies.
+  # ============================================================================
+  - /action/outlier_detection/iqr@21
+  - /action/outlier_detection/lof@22
+  - /action/outlier_detection/z_score@23

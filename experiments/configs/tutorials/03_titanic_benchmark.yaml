@@ -1,0 +1,41 @@
+# @package _global_
+# ------------------------------------------------------------------------------
+# TUTORIAL 03 CONFIGURATION: TITANIC BENCHMARK
+# ------------------------------------------------------------------------------
+#
+# OBJECTIVE:
+# Run a comprehensive benchmark on the Titanic dataset by loading the COMPLETE
+# action space. Unlike previous tutorials that loaded a single action, this
+# configuration imports the entire catalog of cleaning operations (imputation,
+# encoding, scaling, etc.).
+#
+# USE CASE:
+# This is typically used for:
+# 1. Integration Testing: Ensuring all implemented actions can run on the dataset without crashing.
+# 2. RL Exploration: Providing the Reinforcement Learning agent with the full set
+#    of tools to search for the optimal cleaning pipeline.
+#
+# IMPORTANT:
+# The directive '# @package _global_' is crucial when this file is located
+# inside a subdirectory. It tells Hydra to flatten the configuration namespace
+# so parameters are accessible at the root level.
+
+defaults:
+  - default
+
+  # --- 1. ACTION SPACE (CATALOG) ---
+  # Load the "Full Suite" of actions.
+  # Instead of loading a specific list or a single action, we load the 'all' config.
+  # This typically populates 'cfg.actions.actions' with a dictionary of all available
+  # tools, indexed by their ID (0 to N).
+  - /actions: all
+  # display log INFO
+  - override /hydra: default
+  - _self_
+
+# ------------------------------------------------------------------------------
+# EXPERIMENT METADATA
+# ------------------------------------------------------------------------------
+experiment:
+  # A human-readable name for logging and WandB tracking
+  name: "03 Titanic Benchmark"

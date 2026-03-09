@@ -1,0 +1,42 @@
+# @package _global_
+# ------------------------------------------------------------------------------
+# DATA PROFILING CONFIGURATION
+# ------------------------------------------------------------------------------
+# This configuration controls the automated generation of data profile reports
+# using 'ydata-profiling'.
+#
+# USAGE:
+# These reports provide a comprehensive overview of the dataset (distributions,
+# missing values, correlations) before or after the cleaning process.
+# ------------------------------------------------------------------------------
+
+profiler:
+  # MASTER SWITCH
+  # Set to 'false' to completely skip profiling. Useful to save time during
+  # debugging or hyperparameter optimization loops.
+  enabled: true
+
+  # PERFORMANCE MODE
+  # - True: Disables expensive computations (correlations, interactions).
+  #         Recommended for large datasets or quick feedback loops.
+  # - False: Full explorative mode. Includes detailed correlation matrices.
+  minimal: true
+
+  # REPORT METADATA
+  # The title that will appear at the top of the generated HTML report.
+  title: "Data Profile Report"
+
+  # OUTPUT DIRECTORY
+  # The folder where reports will be saved.
+  # This path is relative to the Hydra output directory (e.g., experiments/outputs/...).
+  dir: "profiling_reports"
+
+  # EXPORT FORMATS
+  # Toggle the generation of specific file formats.
+  html: true   # Generates a visual, interactive HTML report.
+  json: false  # Generates a raw JSON file (useful for automated parsing).
+
+  # LOGGING
+  # If 'true', prints a concise summary (rows, columns, missing cells)
+  # directly to the console/terminal logs.
+  console_summary: true

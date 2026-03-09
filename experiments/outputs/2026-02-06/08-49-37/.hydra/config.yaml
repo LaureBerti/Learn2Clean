@@ -1,0 +1,26 @@
+dataset:
+  _target_: learn2clean.loaders.CSVLoader
+  target_col: crimepredict
+  file_path: null
+  dataset: crimes.csv
+  read_csv_kwargs:
+    sep: ','
+action:
+  _target_: learn2clean.actions.DummyAdd
+  name: DummyAdd
+  columns: null
+  exclude: null
+  increment: 1
+experiment:
+  seed: 42
+  test_size: 0.25
+  name: 01 Crimes CSV Dummy
+paths:
+  project_root: ${oc.env:PROJECT_ROOT}
+  data_dir: ${.project_root}/data
+  output_dir: ${oc.env:PROJECT_ROOT}/experiments/outputs
+  run_output_dir: ${hydra:runtime.output_dir}
+  tensorboard_root_dir: ${.output_dir}/tensorboard
+  models_dir: ${.run_output_dir}/models
+  figures_dir: ${.run_output_dir}/figures
+  wandb_dir: ${.output_dir}

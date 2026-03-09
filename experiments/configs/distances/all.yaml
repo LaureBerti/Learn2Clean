@@ -1,0 +1,56 @@
+# ------------------------------------------------------------------------------
+# DISTANCE LIST CONFIGURATION: FULL SUITE
+# ------------------------------------------------------------------------------
+# This file defines the complete list of distances available to the RL agent
+# for observation, reward calculation, or logging.
+#
+# TOTAL DISTANCES: 17 (Indices 0 to 16)
+#
+# USAGE:
+# The syntax '/distance/name@N' performs two things:
+# 1. Imports the specific distance configuration (e.g., wasserstein).
+# 2. Assigns it to specific index (N) in the 'distances' list of the DistanceListConfig.
+# ------------------------------------------------------------------------------
+
+defaults:
+  # ============================================================================
+  # 1. DISTRIBUTION METRICS (Scipy & Histograms) (Indices 0-5)
+  # Measures shape similarity and probability divergence.
+  # ============================================================================
+  - /distance/wasserstein@0
+  - /distance/kl_divergence@1
+  - /distance/jensen_shannon@2
+  - /distance/chi_squared@3
+  - /distance/hist_intersection@4
+  - /distance/hist_correlation@5
+
+  # ============================================================================
+  # 2. MOMENT METRICS: SKEWNESS (Indices 6-8)
+  # Measures asymmetry changes (Mean vs Outliers).
+  # ============================================================================
+  - /distance/skewness_mean@6
+  - /distance/skewness_max@7
+  - /distance/skewness_median@8
+
+  # ============================================================================
+  # 3. MOMENT METRICS: KURTOSIS (Indices 9-11)
+  # Measures tailedness and heavy outliers.
+  # ============================================================================
+  - /distance/kurtosis_mean@9
+  - /distance/kurtosis_max@10
+  - /distance/kurtosis_median@11
+
+  # ============================================================================
+  # 4. MOMENT METRICS: VARIANCE (Indices 12-13)
+  # Measures changes in data scale/spread.
+  # ============================================================================
+  - /distance/variance_mean@12
+  - /distance/variance_max@13
+
+  # ============================================================================
+  # 5. STRUCTURAL INTEGRITY & QUALITY (Indices 14-16)
+  # Checks if cleaning destroyed relationships or data volume.
+  # ============================================================================
+  - /distance/correlation_matrix@14
+  - /distance/missingness@15
+  - /distance/row_count@16

@@ -1,0 +1,7 @@
+defaults:
+  - /distance/wasserstein@0
+  - /distance/kl_divergence@1
+  - /distance/jensen_shannon@2
+  - /distance/chi_squared@3
+  - /distance/hist_intersection@4
+  - /distance/hist_correlation@5
