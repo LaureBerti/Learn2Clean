@@ -26,7 +26,7 @@ Learn2Clean V1 is a Python library for data preprocessing and cleaning based on 
 
 ---
 
-## Key Features
+## Key Features of Learn2Clean V2
 
 * **Hydra-Powered Configuration**: Compose complex experiments (Datasets + Actions + Agents) using simple YAML files.
 * **Gymnasium Environments**:
