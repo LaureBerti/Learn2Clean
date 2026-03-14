@@ -111,7 +111,7 @@ joblib==1.5.3
 cycler==0.12.1
 hf-xet==1.2.0
 Jinja2==3.1.6
-fickling==0.1.7
+fickling==0.1.10
 referencing==0.37.0
 pyparsing==3.3.2
 kaggle==1.8.3
