@@ -140,7 +140,7 @@ smmap==5.0.2
 datasketch==1.9.0
 PyWavelets==1.9.0
 backoff==2.2.1
-cryptography==46.0.3
+cryptography==46.0.6
 grpcio==1.76.0
 tensorboard-data-server==0.7.2
 stable_baselines3==2.4.1
