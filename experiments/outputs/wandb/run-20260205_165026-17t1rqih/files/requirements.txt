@@ -164,4 +164,4 @@ xxhash==3.6.0
 pytest-cov==7.0.0
 pathspec==1.0.3
 tabulate==0.9.0
-pytest==9.0.2
+pytest==9.0.3
