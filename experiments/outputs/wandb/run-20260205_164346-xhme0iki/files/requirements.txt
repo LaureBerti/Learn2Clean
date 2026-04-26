@@ -122,7 +122,7 @@ MarkupSafe==3.0.3
 dill==0.4.0
 kagglesdk==0.1.15
 feature_engine==1.9.3
-GitPython==3.1.46
+GitPython==3.1.47
 graphviz==0.21
 Markdown==3.10
 pluggy==1.6.0
