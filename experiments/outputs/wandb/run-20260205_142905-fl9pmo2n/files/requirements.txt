@@ -33,7 +33,7 @@ webencodings==0.5.1
 minify_html==0.18.1
 coverage==7.13.1
 torch==2.2.0
-pillow==12.1.0
+pillow==12.2.0
 types-tqdm==4.67.0.20250809
 multimethod==1.12
 jsonschema-specifications==2025.9.1
