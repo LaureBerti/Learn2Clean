@@ -53,7 +53,7 @@ Farama-Notifications==0.0.4
 narwhals==2.15.0
 multidict==6.7.0
 typing-inspect==0.9.0
-idna==3.11
+idna==3.15
 wordcloud==1.9.5
 isort==7.0.0
 pdfminer.six==20260107
