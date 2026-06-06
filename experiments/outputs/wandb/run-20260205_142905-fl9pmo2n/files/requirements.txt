@@ -128,7 +128,7 @@ Markdown==3.10
 pluggy==1.6.0
 Pygments==2.19.2
 aiohappyeyeballs==2.6.1
-pyarrow==23.0.0
+pyarrow==23.0.1
 attrs==25.4.0
 platformdirs==4.5.1
 types-pytz==2025.2.0.20251108
