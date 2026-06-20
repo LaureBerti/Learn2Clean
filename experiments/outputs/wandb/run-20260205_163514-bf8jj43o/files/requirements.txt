@@ -57,7 +57,7 @@ idna==3.11
 wordcloud==1.9.5
 isort==7.0.0
 pdfminer.six==20260107
-bleach==6.3.0
+bleach==6.4.0
 setuptools==80.10.1
 cffi==2.0.0
 polyfile-weave==0.5.8
