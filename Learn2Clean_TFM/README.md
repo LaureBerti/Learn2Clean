@@ -45,6 +45,7 @@ SAGA-family datasets are obtained from their public sources: EEG Eye State (Open
 | `run_scalability.py` | Per-reward-term latency vs n |
 | `investigate_tabpfn_tuning.py` | Null robustness across TabPFN configs |
 | `run_automl_baselines.py` | AutoGluon / Auto-sklearn 2.0 end-to-end baselines |
+| `run_tabpfn_agsplit.py` | Ours (clean+TabPFN, R7acc + R7F1) on the AutoML baselines' identical split |
 | `run_prior_distance.py` + `analyze_prior_distance.py` | Four estimators of distance-to-the-TabPFN-prior |
 | `run_divergence_pollution.py` | Engineered pollution targeting the reward mechanism |
 | `run_noise_robust_reward.py`, `run_noise_robust_rich.py` + `merge_f1_selection.py` | R7 redesign: F1- / confidence- / margin- / prior-distance selection under label noise |
