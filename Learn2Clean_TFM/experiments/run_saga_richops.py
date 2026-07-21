@@ -1,6 +1,7 @@
 """
+experiments/run_saga_richops.py
 
-Tests the operator-richness hypothesis (the paper): does extending our pool with SAGA-style
+Tests the operator-richness hypothesis (dossier ⑥): does extending our pool with SAGA-style
 RICH operators (MICE/IterativeImputer, PCA, SMOTE) close the gap to SAGA? Runs leak-free nested
 selection (R7 = TabPFN inner-val acc) over BASE vs RICH pools on the SAGA + a few benchmark
 datasets, reports test TabPFN accuracy AND wall-clock for each pool.
@@ -292,7 +293,8 @@ def test_metrics(Xtr_out, ytr_out, Xte, yte, pipe, seed):
         return nan
 
 
-def run_one(name, seed, cap, select_metrics=("acc", "f1")):
+def run_one(name, seed, cap, select_metrics=("acc", "f1"), rich_only=False,
+            pool_baselines=False, skip_greedy=False):
     X, y = load_ds(name)
     if len(X) > G.SUBSAMPLE_CAP:
         X, _, y, _ = train_test_split(X, y, train_size=G.SUBSAMPLE_CAP, random_state=0,
@@ -304,9 +306,25 @@ def run_one(name, seed, cap, select_metrics=("acc", "f1")):
     Xtr, ytr = Xtr.reset_index(drop=True), ytr.reset_index(drop=True)
     Xte, yte = Xte.reset_index(drop=True), yte.reset_index(drop=True)
     row = {"dataset": name, "seed": seed}
+
+    # POOL-DEPENDENT baselines on the rich pool (B-RAND = random pipeline; B-SC = full pipeline).
+    # These MUST reflect the operative pool: B-RAND draws one random operator per group, B-SC turns
+    # every group on (first non-None option). Leak-free: fit on train context, deploy TabPFN on test.
+    if pool_baselines:
+        groups = groups_for(True)
+        rng = np.random.default_rng(seed)
+        rand_pipe = tuple(opts[int(rng.integers(len(opts)))] for _, opts in groups)
+        full_pipe = tuple(next((o for o in opts if o is not None), opts[0]) for _, opts in groups)
+        for bname, pipe in [("richB_rand", rand_pipe), ("richB_full", full_pipe)]:
+            m = test_metrics(Xtr, ytr, Xte, yte, pipe, seed)
+            for mk, mv in m.items():
+                row[f"{bname}_{mk}"] = mv
+            row[f"{bname}_pipe"] = str(pipe)
+
     # arms = pool {base,rich} × reward {r3=rf, r7=tabpfn} × selection-metric (select_metrics).
     # Each arm's winner is DEPLOYED on TabPFN and scored on ALL test metrics (acc/f1/prec/rec/ece).
-    for tag, rich in [("base", False), ("rich", True)]:
+    pools = [] if skip_greedy else ([("rich", True)] if rich_only else [("base", False), ("rich", True)])
+    for tag, rich in pools:
         for rw, est in [("r3", "rf"), ("r7", "tabpfn")]:
             for sm in select_metrics:
                 t0 = time.time()
@@ -316,25 +334,33 @@ def run_one(name, seed, cap, select_metrics=("acc", "f1")):
                 for mk, mv in m.items():
                     row[f"{key}_{mk}"] = mv
                 row[f"{key}_pipe"] = str(pipe); row[f"{key}_sec"] = time.time() - t0
-    # headline contrasts: R7−R3 under MATCHED selection metric, on the metric it selected for
+    # headline contrasts: R7−R3 under MATCHED selection metric, on the metric it selected for.
+    # Guard on key existence: base arms absent under --rich-only; all greedy arms absent under --skip-greedy.
     for sm, tgt in [("acc", "acc"), ("f1", "f1"), ("ece", "ece")]:
         if sm in select_metrics:
             for tag in ("base", "rich"):
-                row[f"{tag}_{sm}_delta"] = row[f"{tag}_r7{sm}_{tgt}"] - row[f"{tag}_r3{sm}_{tgt}"]
+                k7, k3 = f"{tag}_r7{sm}_{tgt}", f"{tag}_r3{sm}_{tgt}"
+                if k7 in row and k3 in row:
+                    row[f"{tag}_{sm}_delta"] = row[k7] - row[k3]
     return row
 
 
-def main(datasets, seeds, cap, output_dir, select_metrics=("acc", "f1")):
+def main(datasets, seeds, cap, output_dir, select_metrics=("acc", "f1"),
+         rich_only=False, pool_baselines=False, skip_greedy=False):
     out = Path(output_dir); out.mkdir(parents=True, exist_ok=True)
     rows = []
     for ds in datasets:
         for seed in seeds:
             try:
-                r = run_one(ds, seed, cap, select_metrics)
+                r = run_one(ds, seed, cap, select_metrics, rich_only=rich_only,
+                            pool_baselines=pool_baselines, skip_greedy=skip_greedy)
             except Exception as e:
                 r = {"dataset": ds, "seed": seed, "err": repr(e)[:160]}
             rows.append(r); pd.DataFrame(rows).to_csv(out / "saga_richops_per_run.csv", index=False)
-            msg = " | ".join(f"{sm}-sel Δ(R7-R3)={r.get(f'rich_{sm}_delta', np.nan):+.4f}" for sm in select_metrics)
+            if skip_greedy:
+                msg = f"B-RAND f1={r.get('richB_rand_f1', np.nan):.3f} B-SC f1={r.get('richB_full_f1', np.nan):.3f}"
+            else:
+                msg = " | ".join(f"{sm}-sel Δ(R7-R3)={r.get(f'rich_{sm}_delta', np.nan):+.4f}" for sm in select_metrics)
             print(f"  {ds:14} s{seed}: {msg}", flush=True)
     df = pd.DataFrame(rows)
     metric_cols = [c for c in df.columns if any(c.endswith(f"_{m}") for m in ("acc", "f1", "prec", "rec", "ece"))
@@ -365,6 +391,12 @@ if __name__ == "__main__":
     ap.add_argument("--seeds", nargs="+", type=int, default=[42, 1, 2])
     ap.add_argument("--max-pipelines", type=int, default=40)
     ap.add_argument("--select-metrics", nargs="+", default=["acc", "f1"], choices=["acc", "f1", "ece"])
+    ap.add_argument("--rich-only", action="store_true", help="skip the base-pool arms (~half the cost)")
+    ap.add_argument("--pool-baselines", action="store_true",
+                    help="also compute rich-pool B-RAND (random pipeline) + B-SC (full pipeline)")
+    ap.add_argument("--skip-greedy", action="store_true",
+                    help="skip greedy arms entirely (use with --pool-baselines for a cheap B-RAND/B-SC-only run)")
     ap.add_argument("--output-dir", default=str(ROOT / "outputs/paper_ready/saga_richops"))
     a = ap.parse_args()
-    main(a.datasets, tuple(a.seeds), a.max_pipelines, a.output_dir, tuple(a.select_metrics))
+    main(a.datasets, tuple(a.seeds), a.max_pipelines, a.output_dir, tuple(a.select_metrics),
+         rich_only=a.rich_only, pool_baselines=a.pool_baselines, skip_greedy=a.skip_greedy)

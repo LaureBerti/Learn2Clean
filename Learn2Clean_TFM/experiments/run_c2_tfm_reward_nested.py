@@ -1,4 +1,5 @@
 """
+experiments/run_c2_tfm_reward_nested.py
 
 C2 (REVISION) — TFM-Aware Reward with a LEAK-FREE nested evaluation protocol
 ============================================================================
@@ -66,7 +67,8 @@ import numpy as np
 import pandas as pd
 from scipy.stats import wilcoxon
 from sklearn.impute import KNNImputer, SimpleImputer
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import (accuracy_score, f1_score, precision_score,
+                             recall_score)
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler, StandardScaler
 
@@ -257,6 +259,7 @@ def _tabpfn_fit_predict(Xtr, ytr, Xte, seed: int):
             n_estimators=cfg["n_estimators"],
             softmax_temperature=cfg["softmax_temperature"],
             balance_probabilities=cfg["balance_probabilities"],
+            random_state=seed,   # fixed → reproducible (R3-W4); removes global-RNG dependence
         )
         clf.fit(Xtr, ytr)
         y_prob = clf.predict_proba(Xte)
@@ -308,8 +311,10 @@ def inner_val_tabpfn_acc(X_clean: pd.DataFrame, y: pd.Series, seed: int) -> floa
 def final_test_tabpfn(
     X_sel_clean: pd.DataFrame, y_sel: pd.Series,
     X_test_prepared: pd.DataFrame, y_test: pd.Series, seed: int,
-) -> Tuple[float, float]:
-    """FINAL metric: fit TabPFN on cleaned D_sel context, evaluate on untouched D_test."""
+) -> Tuple[float, float, float, float, float]:
+    """FINAL metric: fit TabPFN on cleaned D_sel context, evaluate on untouched D_test.
+    Returns (accuracy, ECE, macro-F1, macro-precision, macro-recall)."""
+    nan = (float("nan"),) * 5
     Xtr, ytr, le = _encode_align(X_sel_clean, y_sel)
     shared = [c for c in X_sel_clean.select_dtypes(include="number").columns
               if c in X_test_prepared.columns]
@@ -317,15 +322,18 @@ def final_test_tabpfn(
     try:
         yte = le.transform(np.asarray(y_test))
     except Exception:
-        return float("nan"), float("nan")
+        return nan
     if len(np.unique(ytr)) < 2 or len(yte) == 0:
-        return float("nan"), float("nan")
+        return nan
     try:
         y_pred, y_prob = _tabpfn_fit_predict(Xtr, ytr, Xte, seed)
-        return float(accuracy_score(yte, y_pred)), compute_ece(yte, y_prob)
+        return (float(accuracy_score(yte, y_pred)), compute_ece(yte, y_prob),
+                float(f1_score(yte, y_pred, average="macro", zero_division=0)),
+                float(precision_score(yte, y_pred, average="macro", zero_division=0)),
+                float(recall_score(yte, y_pred, average="macro", zero_division=0)))
     except Exception as exc:
         logger.debug("final-test TabPFN failed: %s", exc)
-        return float("nan"), float("nan")
+        return nan
 
 
 # --------------------------------------------------------------------------- #
@@ -412,14 +420,17 @@ def run_one(ds_name: str, seed: int, pipelines, actions) -> Optional[Dict]:
            "tfm_pipeline": pipeline_label(best_tfm),
            "pipelines_match": int(best_rf == best_tfm)}
 
+    metric_names = ("acc", "ece", "f1", "prec", "rec")
     for mode, best in (("rf", best_rf), ("tfm", best_tfm)):
         X_clean = apply_pipeline(X_sel, y_sel, best, actions)
         if X_clean is None:
-            out[f"{mode}_acc"], out[f"{mode}_ece"] = float("nan"), float("nan")
+            for m in metric_names:
+                out[f"{mode}_{m}"] = float("nan")
             continue
         X_test_prep = prepare_test_like_train(X_sel, X_test, best)
-        acc, ece = final_test_tabpfn(X_clean, y_sel, X_test_prep, y_test, seed)
-        out[f"{mode}_acc"], out[f"{mode}_ece"] = acc, ece
+        vals = final_test_tabpfn(X_clean, y_sel, X_test_prep, y_test, seed)
+        for m, v in zip(metric_names, vals):
+            out[f"{mode}_{m}"] = v
     return out
 
 
@@ -428,7 +439,9 @@ def aggregate(df: pd.DataFrame) -> pd.DataFrame:
     rows = []
     for ds, g in df.groupby("dataset"):
         row = {"dataset": ds, "n_seeds": len(g)}
-        for col in ("rf_acc", "tfm_acc", "rf_ece", "tfm_ece"):
+        metric_cols = [f"{mode}_{m}" for mode in ("rf", "tfm")
+                       for m in ("acc", "f1", "prec", "rec", "ece")]
+        for col in metric_cols:
             vals = g[col].dropna().values
             if len(vals) == 0:
                 row[f"{col}_mean"], row[f"{col}_ci95"] = float("nan"), float("nan")
@@ -460,8 +473,8 @@ def main(dataset_names=None, output_dir=None, seeds=(42,), max_pipelines=20) -> 
             r = run_one(ds, seed, pipelines, actions)
             if r is not None:
                 rows.append(r)
-                print(f"   rf  acc={r['rf_acc']:.4f} ece={r['rf_ece']:.4f}  |  "
-                      f"tfm acc={r['tfm_acc']:.4f} ece={r['tfm_ece']:.4f}  "
+                print(f"   rf  acc={r['rf_acc']:.4f} f1={r['rf_f1']:.4f} ece={r['rf_ece']:.4f}  |  "
+                      f"tfm acc={r['tfm_acc']:.4f} f1={r['tfm_f1']:.4f} ece={r['tfm_ece']:.4f}  "
                       f"({time.time()-ts:.0f}s)", flush=True)
             # incremental save (long CPU run — never lose progress)
             pd.DataFrame(rows).to_csv(out_dir / "results_per_seed.csv", index=False)
