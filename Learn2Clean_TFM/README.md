@@ -1,8 +1,8 @@
-# Learn2Clean V3 (L2C2) — Prior-Aligned Data Cleaning for Tabular Foundation Models
+# L2C2_TFM — Prior-Aligned Data Cleaning for Tabular Foundation Models
 
 Revision artifact. Learn2Clean reframes tabular data cleaning as selecting a sequence of cleaning
 operators; **V1** ([Berti-Équille, WWW 2019](https://doi.org/10.1145/3308558.3313602)) used tabular
-Q-learning, **V2** used deep RL agents (no publication), and **V3 (this code)** targets tabular
+Q-learning, **V2** used deep RL agents (no publication), and **Learn2Clean-TFM (V3) (this code)** targets tabular
 foundation models (TabPFN v2), extending the operator set and the reward function.
 
 ## Held-out protocol evaluation (key revision change)
