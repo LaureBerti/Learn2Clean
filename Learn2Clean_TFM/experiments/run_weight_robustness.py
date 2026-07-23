@@ -1,8 +1,9 @@
 """
+experiments/run_weight_robustness.py
 
 WR — Weight-robustness: fair R7 (TFMAwareReward) vs R3 (RF-reward) over the WHOLE weight
 simplex + weight-free Pareto. Implements docs/protocols/weight_robustness_protocol.md.
-Leak-free (sacred outer test / inner-val selection); MATCHED — the ONLY difference between
+Held-out protocol (sacred outer test / inner-val selection); MATCHED — the ONLY difference between
 R3 and R7 is the accuracy estimator (RandomForest vs TabPFN v2).
 
 Design (complete-metrics, single cache → all analyses free):
@@ -281,7 +282,7 @@ def pareto(pool_df: pd.DataFrame, weights) -> pd.DataFrame:
 
 
 def summarize(df: pd.DataFrame, par: pd.DataFrame, out_dir: Path) -> str:
-    L = ["WEIGHT-ROBUSTNESS SUMMARY (leak-free, matched; only estimator differs)\n"]
+    L = ["WEIGHT-ROBUSTNESS SUMMARY (held-out protocol, matched; only estimator differs)\n"]
     for fam in ["neutral", "tabpfn"]:
         for m in ["acc", "f1"]:
             g = df[f"gap_{fam}_{m}"].dropna()

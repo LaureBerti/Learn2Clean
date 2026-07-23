@@ -2,7 +2,7 @@
 experiments/run_baselines_nested.py
 
 Non-RL baselines for the PVLDB revision (revision items M2a / R1-R1 / R3-W3),
-evaluated through the SAME leak-free nested protocol as the D1 gate experiment
+evaluated through the SAME held-out nested protocol as the D1 gate experiment
 (`run_c2_tfm_reward_nested.py`). Every baseline is selected/fit on the inner data
 only and reported on the untouched outer test split, so the numbers are directly
 comparable to L2C2 with no selection leakage.
@@ -12,13 +12,13 @@ Baselines implemented here (runnable now)
   B0  none            raw dirty data (TabPFN handles NaN internally)
   B1  standard        mean impute + MinMax scale            (fit on train, applied to test)
   B2  full            median impute + IQR outlier (train) + z-score scale
-  CleanML-family cleaners (chu-data-lab/CleanML methods, re-implemented leak-free):
+  CleanML-family cleaners (chu-data-lab/CleanML methods, re-implemented held-out protocol):
       cm_mean / cm_median / cm_knn   imputation
       cm_iqr / cm_zscore / cm_isof   outlier removal (train context only)
       cm_dedup                       duplicate-row removal (train context only)
   cm_best             pick the CleanML cleaner with best INNER-VAL TabPFN accuracy,
                       report it on the untouched outer test (mirrors how CleanML
-                      reports its best cleaning method — but leak-free).
+                      reports its best cleaning method — but held-out protocol).
 
 Extension points (need wrappers — see functions at the bottom)
 -------------------------------------------------------------
@@ -48,7 +48,7 @@ from sklearn.impute import KNNImputer, SimpleImputer
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
-# Reuse the EXACT leak-free helpers + constants from the gate experiment so the
+# Reuse the EXACT held-out protocol helpers + constants from the gate experiment so the
 # protocol is identical (outer/inner split, TabPFN final eval, ECE, aggregation).
 import run_c2_tfm_reward_nested as G
 from learn2clean_v3.data.error_injection import ErrorProfile, apply_error_profile
@@ -182,7 +182,7 @@ def eval_baseline(cleaner, X_sel, y_sel, X_test, y_test, seed) -> Tuple[float, .
 
 
 def select_cm_best(X_sel, y_sel, X_test, y_test, seed) -> Tuple[str, Tuple[float, ...]]:
-    """Leak-free 'CleanML-best': choose the cleaner with best inner-val TabPFN
+    """Held-out protocol 'CleanML-best': choose the cleaner with best inner-val TabPFN
     accuracy on D_sel, then report it on the untouched outer test."""
     best_name, best_val = "b0_none", -np.inf
     for name, cleaner in CLEANML_CLEANERS.items():
@@ -200,7 +200,7 @@ def select_cm_best(X_sel, y_sel, X_test, y_test, seed) -> Tuple[str, Tuple[float
 
 def eval_b3_random(X_sel, y_sel, X_test, y_test, seed) -> Tuple[float, ...]:
     """B3 (B-random-pipeline): average of three single-step pipelines
-    (mean impute; median impute; mean-impute+min-max scale), leak-free."""
+    (mean impute; median impute; mean-impute+min-max scale), held-out protocol."""
     mat = [eval_baseline(c, X_sel, y_sel, X_test, y_test, seed)
            for c in (_cm_impute("mean"), _cm_impute("median"), b1_standard)]
     with warnings.catch_warnings():

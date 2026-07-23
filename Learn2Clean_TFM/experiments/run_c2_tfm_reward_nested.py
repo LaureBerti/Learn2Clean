@@ -1,7 +1,7 @@
 """
 experiments/run_c2_tfm_reward_nested.py
 
-C2 (REVISION) — TFM-Aware Reward with a LEAK-FREE nested evaluation protocol
+C2 (REVISION) — TFM-Aware Reward with a HELD-OUT PROTOCOL nested evaluation protocol
 ============================================================================
 This is the revision-round replacement for ``run_c2_tfm_reward.py``. It exists to
 close the selection-leakage concern raised by PVLDB Reviewer #3 (W1) and elevated
@@ -18,7 +18,7 @@ Root cause in the original script
 cached number was reported as the final result (run_c2_tfm_reward.py:522,541,542).
 Selection metric == reported metric == same split → optimistic selection bias.
 
-Leak-free protocol implemented here
+held-out protocol implemented here
 -----------------------------------
 For each dataset and each random seed:
 
@@ -174,7 +174,7 @@ def apply_pipeline(X: pd.DataFrame, y: pd.Series, pipeline: Tuple[int, ...],
 
 
 # --------------------------------------------------------------------------- #
-# Leak-free TEST preparation: fit transforms on D_sel, apply to D_test.
+# Held-out protocol TEST preparation: fit transforms on D_sel, apply to D_test.
 # Row-removing actions (outlier, dedup) are NOT applied to the test set — they
 # only shape the training context. Imputation and scaling are fit on the training
 # context and applied to the test features (TabPFN also normalises internally).
@@ -354,7 +354,7 @@ def select_best(
         if X_clean is None or len(X_clean) == 0:
             continue
 
-        # RF mode: MultiObjectiveReward computes its own internal CV on D_sel (leak-free wrt test)
+        # RF mode: MultiObjectiveReward computes its own internal CV on D_sel (held-out protocol wrt test)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             rf_reward.reset(X_sel, y_sel)
@@ -490,7 +490,7 @@ def main(dataset_names=None, output_dir=None, seeds=(42,), max_pipelines=20) -> 
     pivot = agg.set_index("dataset")
     rf = pivot["rf_acc_mean"].dropna(); tfm = pivot["tfm_acc_mean"].dropna()
     shared = rf.index.intersection(tfm.index)
-    print(f"\n{'='*60}\nC2 NESTED (leak-free) — {len(shared)} datasets, seeds={list(seeds)}")
+    print(f"\n{'='*60}\nC2 NESTED (held-out protocol) — {len(shared)} datasets, seeds={list(seeds)}")
     if len(shared) >= 2:
         try:
             stat, p = wilcoxon(tfm[shared].values, rf[shared].values, alternative="greater")

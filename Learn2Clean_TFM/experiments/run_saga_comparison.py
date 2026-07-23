@@ -1,7 +1,8 @@
 """
+experiments/run_saga_comparison.py
 
 SAGA head-to-head (revision item M2a / R1-R1 / R3-W3, "A for the strong datasets").
-Runs OUR leak-free cleaning method on the SAGA datasets we could source, evaluated
+Runs OUR held-out protocol cleaning method on the SAGA datasets we could source, evaluated
 with LogReg (to match SAGA's multinomial-logreg downstream) AND TabPFN (flagged), and
 tabulates our accuracy next to SAGA's PUBLISHED numbers.
 
@@ -78,7 +79,7 @@ def load_saga(name: str) -> Optional[tuple]:
 
 
 def select_r7(X_sel, y_sel, pipelines, actions, seed) -> tuple:
-    """Leak-free TFM-aware (R7) selection on inner-val only."""
+    """Held-out protocol TFM-aware (R7) selection on inner-val only."""
     n0 = len(X_sel); best, best_s = (), -np.inf
     for seq in pipelines:
         Xc = G.apply_pipeline(X_sel, y_sel, seq, actions)
@@ -151,7 +152,7 @@ def main(seeds, max_pipelines, output_dir=None) -> None:
                                     ours_logreg_sd=("logreg_acc", "std"),
                                     ours_tabpfn=("tabpfn_acc", "mean")).reset_index()
     agg.to_csv(out_dir / "saga_comparison_aggregated.csv", index=False)
-    print("\n=== SAGA COMPARISON (ours = L2C V3, leak-free; natural-dirty; LogReg≈mLogReg) ===")
+    print("\n=== SAGA COMPARISON (ours = L2C V3, held-out protocol; natural-dirty; LogReg≈mLogReg) ===")
     print(f"{'dataset':14} {'dirty':>6} {'SAGA':>6} {'L2C-v1':>7} {'OURS-LogReg':>12} {'OURS-TabPFN':>12}")
     for _, r in agg.iterrows():
         pub = SAGA_PUBLISHED.get(r["dataset"], (None, None, None))

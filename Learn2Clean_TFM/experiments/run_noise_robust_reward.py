@@ -1,6 +1,7 @@
 """
+experiments/run_noise_robust_reward.py
 
-Tests the most promising R7 improvement (selectability finding, the paper): under LABEL NOISE the
+Tests the most promising R7 improvement (selectability finding, dossier ⑧): under LABEL NOISE the
 validation labels are themselves corrupted, so selecting by validation accuracy cannot reward the
 label-cleaning operator. We test a LABEL-FREE, noise-robust selection signal — TabPFN predictive
 CONFIDENCE on the inner-val — which a clean training context should sharpen, letting it pick the

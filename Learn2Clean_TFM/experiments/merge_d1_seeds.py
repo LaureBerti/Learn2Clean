@@ -1,7 +1,8 @@
 """
+experiments/merge_d1_seeds.py
 
 Merge the original 5-seed D1 results with the resumed 3-seed results into the full
-8-seed leak-free D1, re-aggregate (mean ± 95% CI per dataset), and re-run the paired
+8-seed held-out protocol D1, re-aggregate (mean ± 95% CI per dataset), and re-run the paired
 Wilcoxon (TFM>RF) over the per-dataset means. Resume logic — no recomputation of the
 first 5 seeds.
 
@@ -43,7 +44,7 @@ def main(orig: str, resume: str, out: str) -> None:
     pivot = agg.set_index("dataset")
     rf, tfm = pivot["rf_acc_mean"].dropna(), pivot["tfm_acc_mean"].dropna()
     shared = rf.index.intersection(tfm.index)
-    print(f"\n8-seed leak-free D1 — {len(shared)} datasets")
+    print(f"\n8-seed held-out protocol D1 — {len(shared)} datasets")
     if len(shared) >= 2:
         stat, p = wilcoxon(tfm[shared].values, rf[shared].values, alternative="greater")
         wins = int((tfm[shared].values > rf[shared].values).sum())

@@ -1,9 +1,10 @@
 """
+experiments/run_tabpfn_agsplit.py
 
-Byte-identical companion to `run_automl_baselines.py` for(see paper): run OUR cleaning+TabPFN on the
+Byte-identical companion to `run_automl_baselines.py` for verdict ⑫: run OUR cleaning+TabPFN on the
 EXACT same data preparation AutoGluon/Auto-sklearn saw — same load, same 8000-row cap (random_state=0),
 same MCAR-15%, same 70/30 stratified split (random_state=seed) — so ours-vs-AutoGluon is on identical
-splits. Selection is leak-free R7 (TabPFN inner-val accuracy, base operator pool) on the 70% train
+splits. Selection is held-out protocol R7 (TabPFN inner-val accuracy, base operator pool) on the 70% train
 only; the 30% test is scored once with TabPFN.
 
 Usage: PYTHONPATH=src:experiments python experiments/run_tabpfn_agsplit.py --seeds 42 1 2
@@ -42,8 +43,8 @@ def run_one(name, seed):
         Xtr, Xte, ytr, yte = train_test_split(Xd, y, test_size=0.3, random_state=seed)
     Xtr, ytr = Xtr.reset_index(drop=True), ytr.reset_index(drop=True)
     Xte, yte = Xte.reset_index(drop=True), yte.reset_index(drop=True)
-    # leak-free selection on the 70% train (base pool) under BOTH objectives, deploy TabPFN on 30% test.
-    # Report matched-metric: accuracy from R7acc-selection, macro-F1 from R7F1-selection (see paper).
+    # held-out protocol selection on the 70% train (base pool) under BOTH objectives, deploy TabPFN on 30% test.
+    # Report matched-metric: accuracy from R7acc-selection, macro-F1 from R7F1-selection (verdict ⑭).
     pa, _ = R.select_pipeline(Xtr, ytr, False, seed, "tabpfn", "acc")
     pf, _ = R.select_pipeline(Xtr, ytr, False, seed, "tabpfn", "f1")
     ma = R.test_metrics(Xtr, ytr, Xte, yte, pa, seed)

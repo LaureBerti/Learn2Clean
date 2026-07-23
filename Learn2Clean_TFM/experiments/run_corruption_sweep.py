@@ -1,7 +1,8 @@
 """
+experiments/run_corruption_sweep.py
 
 Corruption-TYPE sweep + label-aware reward arm — where does cleaning (and a TFM-aware
-reward) actually matter for TabPFN? Leak-free, on OpenML(10) + SAGA(3) datasets.
+reward) actually matter for TabPFN? Held-out protocol, on OpenML(10) + SAGA(3) datasets.
 
 Motivation (from prior results): TabPFN is robust to the corruptions we tried (MCAR,
 outliers) → cleaning is inert → no reward can win. The exception should be corruptions
@@ -15,7 +16,7 @@ Feature corruptions hit ALL data (test features also dirty, realistic). LABEL no
 ONLY the training/selection labels (y_sel); test labels stay ground truth (we measure
 accuracy against the TRUE labels — cleaning's job is to de-noise the in-context set).
 
-Arms (all leak-free: inner-val selection, final eval on untouched test):
+Arms (all held-out protocol: inner-val selection, final eval on untouched test):
   no_clean : raw (dirty) D_sel → TabPFN
   R3       : RF-reward selection over base ops (impute/outlier/scale)
   R7       : TabPFN-reward selection over base ops

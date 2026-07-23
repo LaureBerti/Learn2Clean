@@ -1,7 +1,8 @@
 """
+experiments/run_prior_distance.py
 
 Prototype + sanity-check FOUR ways to measure "distance to the TabPFN prior" (R3-W2). For a set
-of leak-free cleaning pipelines on each dataset we compute each prior-distance estimator on the
+of held-out protocol cleaning pipelines on each dataset we compute each prior-distance estimator on the
 CLEANED training context, plus TabPFN held-out accuracy/ECE on an inner-val split, then check:
 
   (a) NON-DEGENERACY — does the estimator actually vary across pipelines? (the dirty-referenced
@@ -40,7 +41,7 @@ from sklearn.metrics.pairwise import rbf_kernel
 ROOT = Path(__file__).parents[1]
 sys.path.insert(0, str(ROOT / "src")); sys.path.insert(0, str(ROOT / "experiments"))
 import run_c2_tfm_reward_nested as G
-import run_saga_richops as R   # reuse apply_pipeline (all leak-free operators)
+import run_saga_richops as R   # reuse apply_pipeline (all held-out protocol operators)
 
 REF = np.random.default_rng(0).standard_normal(20000)  # fixed N(0,1) reference for M3
 

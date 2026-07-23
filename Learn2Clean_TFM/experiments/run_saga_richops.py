@@ -2,11 +2,11 @@
 experiments/run_saga_richops.py
 
 Tests the operator-richness hypothesis (dossier ⑥): does extending our pool with SAGA-style
-RICH operators (MICE/IterativeImputer, PCA, SMOTE) close the gap to SAGA? Runs leak-free nested
+RICH operators (MICE/IterativeImputer, PCA, SMOTE) close the gap to SAGA? Runs held-out protocol nested
 selection (R7 = TabPFN inner-val acc) over BASE vs RICH pools on the SAGA + a few benchmark
 datasets, reports test TabPFN accuracy AND wall-clock for each pool.
 
-Leak-free contract (identical to run_c2_tfm_reward_nested):
+Held-out protocol contract (identical to run_c2_tfm_reward_nested):
   outer 80/20 (sacred test) → inner 75/25 within train (selection only).
   Train-context transforms are FIT on the inner-train and APPLIED to inner-val (for selection)
   and to the sacred test (for the final number). Row-removing ops (outlier, SMOTE) shape the
@@ -92,7 +92,7 @@ def _imputer(name):
 
 
 def apply_pipeline(Xtr, ytr, Xte, pipe, seed):
-    """Leak-free: fit column transforms on Xtr, apply to Xte. Row ops (outlier removal/dedup/smote)
+    """Held-out protocol: fit column transforms on Xtr, apply to Xte. Row ops (outlier removal/dedup/smote)
     touch train only; value ops (winsor/clipz) cap to train-fit bounds and apply to both.
     Returns (Xtr_clean, ytr_clean, Xte_clean) as numeric DataFrames, or None on failure."""
     imp, otl, trans, scl, dim, bal, ddp = pipe
@@ -309,7 +309,7 @@ def run_one(name, seed, cap, select_metrics=("acc", "f1"), rich_only=False,
 
     # POOL-DEPENDENT baselines on the rich pool (B-RAND = random pipeline; B-SC = full pipeline).
     # These MUST reflect the operative pool: B-RAND draws one random operator per group, B-SC turns
-    # every group on (first non-None option). Leak-free: fit on train context, deploy TabPFN on test.
+    # every group on (first non-None option). Held-out protocol: fit on train context, deploy TabPFN on test.
     if pool_baselines:
         groups = groups_for(True)
         rng = np.random.default_rng(seed)

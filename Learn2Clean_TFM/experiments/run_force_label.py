@@ -1,4 +1,5 @@
 """
+experiments/run_force_label.py
 
 force_label follow-up — disentangles "label cleaning doesn't help" from "label cleaning
 helps but the noisy validation can't SELECT it." Motivated by the sweep finding: under
@@ -6,7 +7,7 @@ label noise the inner-val accuracy signal is itself corrupted, so the reward nev
 the mislabel-removal operator (label_used≈0). Here we BYPASS the reward and FORCE label
 cleaning, then measure downstream test accuracy on the clean test labels.
 
-Leak-free: label noise injected on training labels (y_sel) only; test labels are ground
+Held-out protocol: label noise injected on training labels (y_sel) only; test labels are ground
 truth. Dose-response over label-noise rate, all 13 datasets (OpenML 10 + SAGA 3).
 
 Arms:

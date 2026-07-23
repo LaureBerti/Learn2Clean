@@ -1,11 +1,12 @@
 """
+experiments/investigate_tabpfn_tuning.py
 
-Robustness check (reviewer/author question): is the leak-free negative result
+Robustness check (reviewer/author question): is the held-out protocol negative result
 (TFM-reward ≈ RF-reward) an artifact of an under-powered TabPFN configuration?
 
 D1 used TabPFN defaults: n_estimators=8, softmax_temperature=0.9,
 balance_probabilities=False, context cap=1024. This driver re-runs the EXACT
-leak-free nested comparison under several TabPFN configurations and reports, per
+held-out protocol nested comparison under several TabPFN configurations and reports, per
 config: TFM mean acc, RF mean acc, their gap, and how many datasets TFM wins.
 
 If a stronger TabPFN (larger ensemble, larger ICL context, probability balancing)

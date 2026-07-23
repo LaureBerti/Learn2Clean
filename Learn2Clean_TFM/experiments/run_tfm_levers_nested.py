@@ -1,7 +1,7 @@
 """
 experiments/run_tfm_levers_nested.py
 
-TFM-reward improvement levers under the LEAK-FREE nested 8-seed protocol.
+TFM-reward improvement levers under the HELD-OUT PROTOCOL nested 8-seed protocol.
 ====================================================================
 Same outer/inner split contract as run_c2_tfm_reward_nested.py (which it imports
 from): outer 20% test is sacred; all selection, threshold tuning and calibration
@@ -37,7 +37,7 @@ from sklearn.metrics import (accuracy_score, f1_score, precision_score,
                              recall_score)
 from sklearn.model_selection import train_test_split
 
-# Reuse the audited leak-free harness helpers verbatim.
+# Reuse the audited held-out protocol harness helpers verbatim.
 import run_c2_tfm_reward_nested as NST
 from run_c2_tfm_reward_nested import (
     INNER_VAL_SIZE, MCAR_RATE, OUTER_TEST_SIZE, SUBSAMPLE_CAP,
@@ -101,7 +101,7 @@ def _final_metrics(y_true: np.ndarray, y_pred: np.ndarray, y_prob: np.ndarray) -
 
 def final_test(X_sel_clean, y_sel, X_test_prep, y_test, seed, use_threshold: bool) -> Tuple[float, ...]:
     """Fit TabPFN on cleaned D_sel, evaluate on untouched D_test.
-    If use_threshold: tune the decision threshold on a D_sel inner-val (leak-free)
+    If use_threshold: tune the decision threshold on a D_sel inner-val (held-out protocol)
     and apply it to the test probabilities; else argmax."""
     _, ytr, le = _encode_align(X_sel_clean, y_sel)
     num = X_sel_clean.select_dtypes(include="number")

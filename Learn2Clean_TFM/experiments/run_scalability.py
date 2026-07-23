@@ -1,4 +1,5 @@
 """
+experiments/run_scalability.py
 
 S — R7 scalability (docs/protocols/r7_scalability_protocol.md). Measures how each REWARD
 TERM scales with rows n and columns p, and the R7-vs-R3 per-call speedup. Synthetic data

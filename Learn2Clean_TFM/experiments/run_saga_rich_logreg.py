@@ -1,8 +1,9 @@
 """
+experiments/run_saga_rich_logreg.py
 
 CLEAN operator-richness-vs-SAGA test with the MODEL HELD CONSTANT (LogReg, matching SAGA's mLogReg).
 For each SAGA dataset: greedy-select a cleaning pipeline from the BASE (7-op) pool and from the RICH
-(13,440-pipeline) pool, selecting AND evaluating with LogReg, leak-free, 8 seeds. Answers: do rich
+(13,440-pipeline) pool, selecting AND evaluating with LogReg, held-out protocol, 8 seeds. Answers: do rich
 operators close the gap to SAGA's published Table-5 accuracy when we don't change the downstream model?
 
 Reuses run_saga_richops.apply_pipeline / groups_for / load_ds (all rich operators), but swaps the

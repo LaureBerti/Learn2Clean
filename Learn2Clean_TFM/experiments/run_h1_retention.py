@@ -1,6 +1,7 @@
 """
+experiments/run_h1_retention.py
 
-H1 — does R7's retention/context term open a GENUINE leak-free gap?
+H1 — does R7's retention/context term open a GENUINE held-out protocol gap?
 Mechanism: TabPFN is in-context, so deleting rows hurts it more than RF. R7 penalises
 row deletion quadratically (context_penalty_power=2); R3 linearly. This only matters when
 cleaning actually REMOVES rows — so we inject OUTLIERS (not MCAR) at increasing rates so
@@ -16,7 +17,7 @@ Three arms to DECOMPOSE any gap (matched everything except the named factor):
   R7lin    : TabPFN estimator, retention^1, drift 0.05   (isolates estimator)
   R7       : TabPFN estimator, retention^2, drift 0.05   (paper R7; adds the retention term)
   → R7 − R7lin isolates the RETENTION term; R7lin − R3 isolates the ESTIMATOR.
-All evaluated leak-free (sacred outer test), final accuracy with TabPFN; retention of the
+All evaluated held-out protocol (sacred outer test), final accuracy with TabPFN; retention of the
 selected pipeline is logged to confirm the mechanism (does R7 keep more rows?).
 
 Usage

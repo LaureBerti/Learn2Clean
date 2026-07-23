@@ -1,4 +1,5 @@
 """
+experiments/run_divergence_pollution.py
 
 CONTROLLED STRESS-TEST of the reward mechanism (NOT a general-superiority claim). On `adult`
 the TFM-reward (R7) beats the RF-reward (R3) because the two rewards pick DIFFERENT imputers:
@@ -9,9 +10,9 @@ on other datasets with a synthetic pollution and test the falsifiable prediction
   IF we inject CLUSTER-LOCAL missingness (missingness concentrated inside local feature-space
   clusters, so KNN imputes plausibly per-cluster but fabricates multi-modal global density),
   THEN R7 should start beating R3, with the same R3→knn / R7→mean·median imputer split —
-  whereas plain MCAR (inert per the paper) should leave R3≈R7.
+  whereas plain MCAR (inert per dossier ⑦) should leave R3≈R7.
 
-Pure-accuracy selection (argmax inner-val acc), leak-free nested protocol (reuses W.inner_val_acc
+Pure-accuracy selection (argmax inner-val acc), held-out nested protocol (reuses W.inner_val_acc
 for selection and W.panel_on_test for the sacred-test number). Records the SELECTED imputer per
 reward so we can see the mechanism fire, not just the accuracy delta.
 

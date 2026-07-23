@@ -1,4 +1,5 @@
 """
+experiments/run_noise_robust_rich.py
 
 Noise-robust R7 variants on the RICH operator pool (+ label-clean toggle), under label noise,
 8 seeds, imbalanced datasets, accuracy AND macro-F1 on a SACRED CLEAN test.
@@ -34,8 +35,8 @@ import run_prior_distance as PD
 from run_corruption_sweep import inject_label_noise
 
 R.IMPUTE = [x for x in R.IMPUTE if x != "iterrf"]          # drop the heaviest (RandomForest) imputer
-ARMS = {"R3": "rf", "R7acc": "acc_noisy", "R7F1": "f1_noisy", "R7conf": "conf", "R7margin": "margin",
-        "R7prior": "prior", "oracle": "acc_clean", "oracleF1": "f1_clean"}
+ARMS = {"R3": "rf", "R3F1": "rf_f1", "R7acc": "acc_noisy", "R7F1": "f1_noisy", "R7conf": "conf",
+        "R7margin": "margin", "R7prior": "prior", "oracle": "acc_clean", "oracleF1": "f1_clean"}
 K_CANDIDATES = 16
 
 
@@ -94,9 +95,11 @@ def eval_val(cand, X_sel, y_sel, X_val, y_vn, y_vc, seed):
         d["prior"] = -np.inf
     try:
         clf = RandomForestClassifier(n_estimators=100, random_state=seed, n_jobs=-1).fit(tr.values, ytr2.values)
-        d["rf"] = accuracy_score(y_vn.values, clf.predict(val.values))
+        yp_rf = clf.predict(val.values)
+        d["rf"] = accuracy_score(y_vn.values, yp_rf)
+        d["rf_f1"] = f1_score(y_vn.values, yp_rf, average="macro")   # R3F1 control: RF selecting by F1
     except Exception:
-        d["rf"] = -np.inf
+        d["rf"] = d["rf_f1"] = -np.inf
     try:
         pred, prob = G._tabpfn_fit_predict(tr.values, ytr2.values, val.values, seed)
         d["acc_noisy"] = accuracy_score(y_vn.values, pred); d["acc_clean"] = accuracy_score(y_vc.values, pred)
@@ -173,12 +176,14 @@ def main(datasets, rates, seeds, output_dir):
     agg.to_csv(out / "noise_rich_by_rate.csv", index=False)
     print("\n=== CLEAN-test macro-F1 by label-noise rate (RICH pool) ===")
     for _, r in agg.iterrows():
-        print(f"  rate={r['rate']:.2f}: no_clean={r.no_clean_f1:.3f} R3={r.R3_f1:.3f} R7acc={r.R7acc_f1:.3f} "
-              f"R7F1={r.R7F1_f1:.3f} R7conf={r.R7conf_f1:.3f} R7margin={r.R7margin_f1:.3f} "
-              f"R7prior={r.R7prior_f1:.3f} oracle={r.oracle_f1:.3f} oracleF1={r.oracleF1_f1:.3f}")
-    print("\n  F1 deltas vs references (mean over rates):")
-    for a in ("R7F1", "R7conf", "R7margin", "R7prior"):
-        print(f"    {a:9}: −R7acc={ (agg[f'{a}_f1']-agg.R7acc_f1).mean():+.4f}   −R7F1={ (agg[f'{a}_f1']-agg.R7F1_f1).mean():+.4f}")
+        print(f"  rate={r['rate']:.2f}: no_clean={r.no_clean_f1:.3f} R3F1={r.R3F1_f1:.3f} R7F1={r.R7F1_f1:.3f} "
+              f"R7acc={r.R7acc_f1:.3f} R7conf={r.R7conf_f1:.3f} R7prior={r.R7prior_f1:.3f} oracleF1={r.oracleF1_f1:.3f}")
+    print(f"\n  *** CONTROL: mean(R7F1 − R3F1) on F1 = {(agg.R7F1_f1-agg.R3F1_f1).mean():+.4f} "
+          f"(>0 ⇒ model matters with F1; ≈0 ⇒ only the METRIC is the lever) ***")
+    print(f"  mean(R7F1 − no_clean) = {(agg.R7F1_f1-agg.no_clean_f1).mean():+.4f} | "
+          f"mean(R3F1 − no_clean) = {(agg.R3F1_f1-agg.no_clean_f1).mean():+.4f}")
+    for a in ("R7conf", "R7margin", "R7prior"):
+        print(f"    {a:9}: −R7F1={ (agg[f'{a}_f1']-agg.R7F1_f1).mean():+.4f}")
 
 
 if __name__ == "__main__":
