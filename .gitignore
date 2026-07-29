@@ -109,3 +109,6 @@ ENV/
 # experiment run artifacts (not source; the wandb pip-freeze snapshots triggered Dependabot alerts)
 experiments/outputs/
 wandb/
+# legacy V1 (2019) dependency pins — archival, superseded by pyproject.toml; kept on disk, out of Dependabot
+Learn2Clean_V1/python-package/requirements.txt
+Learn2Clean_V1/python-package/requirements_dev.txt
