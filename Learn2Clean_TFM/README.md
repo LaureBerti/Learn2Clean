@@ -1,11 +1,11 @@
 # L2C2_TFM — Prior-Aligned Data Cleaning for Tabular Foundation Models
 
-Revision artifact. Learn2Clean reframes tabular data cleaning as selecting a sequence of cleaning
+Learn2Clean reframes tabular data cleaning as selecting a sequence of cleaning
 operators; **V1** ([Berti-Équille, WWW 2019](https://doi.org/10.1145/3308558.3313602)) used tabular
 Q-learning, **V2** used deep RL agents (no publication), and **Learn2Clean-TFM (V3) (this code)** targets tabular
 foundation models (TabPFN v2), extending the operator set and the reward function.
 
-## Held-out protocol evaluation (key revision change)
+## Held-out protocol evaluation
 
 Pipeline selection and final evaluation are separated by a **strict nested protocol**: an outer
 20% test split is held out and never seen by any selection/reward computation; pipelines are
@@ -62,7 +62,9 @@ python experiments/run_c3_8seed.py             --seeds 42 1 2 3 4 5 6 7 \
        --output-dir outputs/paper_ready/c3_8seed                               # C3 calibration (ECE)
 python experiments/run_c4_8seed.py             --seeds 42 1 2 3 4 5 6 7 \
        --output-dir outputs/paper_ready/c4_8seed                               # C4 error-rate sensitivity
-python experiments/run_c5_param_ablation.py    --mode both                     # C5 parameterized vs discrete
+python experiments/run_c5_param_ablation.py    --mode both                     # C5 parameterized vs discrete (reward-level +0.0007)
+python experiments/run_c5_taskeval_par.py      --seeds 42 1 2 3 4 5 6 7 --workers 4 \
+       --output-dir outputs/paper_ready/c5_taskeval                            # C5 TASK-LEVEL delta (§5.9): dacc=-0.0002, p=0.77
 python experiments/run_c6_transfer.py          --n-train 30000 --n-finetune 5000   # C6 transfer
 ```
 
@@ -77,7 +79,8 @@ python experiments/run_weight_robustness.py                                    #
 python experiments/run_h1_retention.py         --seeds 42 1 2 3 4 5 6 7        # retention-term test
 python experiments/run_force_label.py          --datasets EEG Titanic --seeds 42 1 2   # label-noise selectability
 python experiments/run_prior_distance.py       --seeds 42 1 2 3 4 5 6 7        # 4 prior-distance estimators
-python experiments/analyze_prior_distance.py                                   # summarise the above
+python experiments/analyze_prior_distance.py                                   # summarise the above (raw correlations)
+python experiments/analyze_prior_mediation.py                                  # §5.4/Table 4: prior-distance mediation (partials)
 python experiments/run_scalability.py                                          # per-reward-term latency vs n
 ```
 
@@ -102,6 +105,8 @@ Tables are regenerated from the CSVs with `gen_table3_latex.py` / `gen_table3_fu
 | `run_automl_baselines.py` | AutoGluon / Auto-sklearn 2.0 end-to-end baselines |
 | `run_tabpfn_agsplit.py` | Ours (clean+TabPFN, R7acc + R7F1) on the AutoML baselines' identical split |
 | `run_prior_distance.py` + `analyze_prior_distance.py` | Four estimators of distance-to-the-TabPFN-prior |
+| `analyze_prior_mediation.py` | §5.4 / Table 4: prior-distance mediation — raw + partial Spearman (distance-to-prior subsumes drift) |
+| `run_c5_taskeval_par.py` (+ `run_c5_taskeval.py`) | C5 task-level: parameterized vs discrete on TabPFN test accuracy, 8-seed held-out (§5.9) |
 | `run_divergence_pollution.py` | Engineered pollution targeting the reward mechanism |
 | `run_noise_robust_reward.py`, `run_noise_robust_rich.py` + `merge_f1_selection.py` | R7 redesign: F1- / confidence- / margin- / prior-distance selection under label noise |
 

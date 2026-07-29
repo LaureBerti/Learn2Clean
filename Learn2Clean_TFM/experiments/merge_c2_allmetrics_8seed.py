@@ -1,9 +1,9 @@
 """
 experiments/merge_c2_allmetrics_8seed.py
 
-Merge the two parallel C2 all-metrics VM runs into one 8-seed table:
-  * c2_allmetrics_4seed        -> seeds 42, 1, 2, 3   (VM c2allm-4seed)
-  * c2_allmetrics_seeds4567    -> seeds 4, 5, 6, 7     (VM c2allm-seeds4567)
+Merge the two parallel C2 all-metrics runs into one 8-seed table:
+  * c2_allmetrics_4seed        -> seeds 42, 1, 2, 3
+  * c2_allmetrics_seeds4567    -> seeds 4, 5, 6, 7
 
 Both were produced by the SAME run_c2_tfm_reward_nested.py (fixed random_state=seed),
 so concatenating per-seed rows and re-aggregating is exact.

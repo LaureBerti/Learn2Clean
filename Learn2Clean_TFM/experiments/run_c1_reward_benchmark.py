@@ -22,7 +22,7 @@ Produces
 Usage
 -----
   conda activate l2c_torch          # or: source .venv/bin/activate
-  cd /Users/laureberti/Projects/L2C_V3
+  cd Learn2Clean_TFM
   PYTHONPATH=src python experiments/run_c1_reward_benchmark.py
 
   # Subset of datasets (faster smoke-test)

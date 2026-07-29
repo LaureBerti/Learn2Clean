@@ -2,12 +2,12 @@
 experiments/run_brl_8seed.py
 
 8-seed driver for the B-RL baselines (B-RL-RF, B-RL-TFM) — variance for Table 2
-(revision item R3-W4). Thin wrapper around run_brl_baselines.main: reassigns the
+Thin wrapper around run_brl_baselines.main: reassigns the
 module OUT_DIR per seed, runs all datasets, then merges into a single per-seed CSV
 plus a mean ± 95% CI aggregate per (dataset, mode).
 
 This is the EXPENSIVE table row: PPO training (RF reward) + TFM fine-tune per
-dataset per seed. Designed to run unattended on a VM with a >24h failsafe.
+dataset per seed. Designed to run unattended.
 
 Usage
 -----

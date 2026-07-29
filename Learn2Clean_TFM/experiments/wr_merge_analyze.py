@@ -1,7 +1,7 @@
 """
 experiments/wr_merge_analyze.py
 
-Merge the per-shard pool_metrics.csv files (from the 5-VM weight-robustness fan-out)
+Merge the per-shard pool_metrics.csv files (from the weight-robustness fan-out)
 and run the full sweep + Pareto + summary once over the combined 10-dataset pool.
 Pure analysis — no model calls.
 

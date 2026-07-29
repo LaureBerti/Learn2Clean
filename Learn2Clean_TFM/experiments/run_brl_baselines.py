@@ -32,7 +32,7 @@ Outputs
 Usage
 -----
   conda activate l2c_torch
-  cd /Users/laureberti/Projects/L2C_V3
+  cd Learn2Clean_TFM
   PYTHONPATH=src python experiments/run_brl_baselines.py
   PYTHONPATH=src python experiments/run_brl_baselines.py --datasets hepatitis ionosphere
   PYTHONPATH=src python experiments/run_brl_baselines.py --n-steps 3000 --n-tfm-steps 500

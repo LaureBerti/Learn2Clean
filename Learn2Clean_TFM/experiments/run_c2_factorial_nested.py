@@ -1,7 +1,7 @@
 """
 experiments/run_c2_factorial_nested.py
 
-FAIR 2x2 factorial RF-vs-TFM comparison (revision — addresses the confound that the
+FAIR 2x2 factorial RF-vs-TFM comparison (addresses the confound that the
 submitted RF-reward and TFM-reward used DIFFERENT weights AND a different functional
 form, so "RF vs TFM" conflated the eval model with the weighting).
 

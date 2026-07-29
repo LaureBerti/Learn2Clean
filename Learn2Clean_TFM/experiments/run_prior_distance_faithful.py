@@ -1,7 +1,7 @@
 """
 experiments/run_prior_distance_faithful.py
 
-A FAITHFUL prior-distance DIAGNOSTIC (route (a), answering R3-W2). Instead of comparing a dataset to a
+A FAITHFUL prior-distance DIAGNOSTIC (route (a)). Instead of comparing a dataset to a
 Gaussian proxy (our earlier M1--M4), we compare it to samples drawn from an SCM-based approximation of
 TabPFN's OWN prior --- the random structural-causal-model / random-MLP tabular generator TabPFN is
 meta-trained on. Distance is a two-sample statistic (energy distance, RBF-MMD, C2ST-AUC) between the

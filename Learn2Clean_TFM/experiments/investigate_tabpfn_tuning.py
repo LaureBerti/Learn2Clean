@@ -1,7 +1,7 @@
 """
 experiments/investigate_tabpfn_tuning.py
 
-Robustness check (reviewer/author question): is the held-out protocol negative result
+Robustness check: is the held-out protocol negative result
 (TFM-reward ≈ RF-reward) an artifact of an under-powered TabPFN configuration?
 
 D1 used TabPFN defaults: n_estimators=8, softmax_temperature=0.9,

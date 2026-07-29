@@ -1,9 +1,9 @@
 """
 experiments/run_d2_prioralign_nested.py
 
-D2 — Prior-aligned drift, held-out protocol (PVLDB revision item M1/M2c, R3-W2).
+D2 — Prior-aligned drift, held-out protocol.
 ==================================================================
-Reviewer 3 (W2): the implemented Wasserstein "drift" term penalised distance to the
+The implemented Wasserstein "drift" term penalised distance to the
 DIRTY pre-cleaning data, not to the TFM prior — so "prior alignment" was not actually
 implemented, and drift-heavy rewards degenerate to no-op.
 

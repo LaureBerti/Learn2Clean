@@ -1,7 +1,7 @@
 """
 experiments/run_prior_distance.py
 
-Prototype + sanity-check FOUR ways to measure "distance to the TabPFN prior" (R3-W2). For a set
+Prototype + sanity-check FOUR ways to measure "distance to the TabPFN prior". For a set
 of held-out protocol cleaning pipelines on each dataset we compute each prior-distance estimator on the
 CLEANED training context, plus TabPFN held-out accuracy/ECE on an inner-val split, then check:
 

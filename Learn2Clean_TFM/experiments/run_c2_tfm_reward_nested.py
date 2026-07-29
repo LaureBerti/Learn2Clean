@@ -1,11 +1,10 @@
 """
 experiments/run_c2_tfm_reward_nested.py
 
-C2 (REVISION) — TFM-Aware Reward with a HELD-OUT PROTOCOL nested evaluation protocol
+C2 — TFM-Aware Reward with a HELD-OUT PROTOCOL nested evaluation protocol
 ============================================================================
-This is the revision-round replacement for ``run_c2_tfm_reward.py``. It exists to
-close the selection-leakage concern raised by PVLDB Reviewer #3 (W1) and elevated
-by the AC to the explicit acceptance gate:
+This is the replacement for ``run_c2_tfm_reward.py``. It exists to
+close the selection-leakage concern in the earlier single-split protocol:
 
     "If the same held-out split is used both to select/optimize cleaning pipelines
      and to report final performance, this leads to selection leakage and
@@ -43,7 +42,7 @@ the pipeline — this is the separation R3 and the AC asked for.
 Multi-seed
 ----------
 Pass ``--seeds 42 1 2 3 4`` to repeat the whole protocol over seeds and aggregate
-mean ± 95% CI per dataset (closes R3-W4 variance concern in the same run).
+mean ± 95% CI per dataset.
 
 Usage
 -----
@@ -259,7 +258,7 @@ def _tabpfn_fit_predict(Xtr, ytr, Xte, seed: int):
             n_estimators=cfg["n_estimators"],
             softmax_temperature=cfg["softmax_temperature"],
             balance_probabilities=cfg["balance_probabilities"],
-            random_state=seed,   # fixed → reproducible (R3-W4); removes global-RNG dependence
+            random_state=seed,   # fixed → reproducible; removes global-RNG dependence
         )
         clf.fit(Xtr, ytr)
         y_prob = clf.predict_proba(Xte)

@@ -1,7 +1,7 @@
 """
 experiments/run_saga_comparison.py
 
-SAGA head-to-head (revision item M2a / R1-R1 / R3-W3, "A for the strong datasets").
+SAGA head-to-head on the strong datasets.
 Runs OUR held-out protocol cleaning method on the SAGA datasets we could source, evaluated
 with LogReg (to match SAGA's multinomial-logreg downstream) AND TabPFN (flagged), and
 tabulates our accuracy next to SAGA's PUBLISHED numbers.

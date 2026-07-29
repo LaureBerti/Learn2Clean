@@ -2,7 +2,7 @@
 experiments/run_c4_8seed.py
 
 8-seed driver for C4 (error sensitivity) — produces a mean +/- 95% CI advantage
-band for Figure 5 (R3-W4 variance). Thin wrapper around
+band for Figure 5. Thin wrapper around
 run_c4_error_sensitivity.main: runs the MCAR sweep once per seed, tags rows with
 the seed, and merges into results_per_seed.csv.
 

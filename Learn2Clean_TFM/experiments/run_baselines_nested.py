@@ -1,7 +1,7 @@
 """
 experiments/run_baselines_nested.py
 
-Non-RL baselines for the PVLDB revision (revision items M2a / R1-R1 / R3-W3),
+Non-RL baselines,
 evaluated through the SAME held-out nested protocol as the D1 gate experiment
 (`run_c2_tfm_reward_nested.py`). Every baseline is selected/fit on the inner data
 only and reported on the untouched outer test split, so the numbers are directly

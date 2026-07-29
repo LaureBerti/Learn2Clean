@@ -13,7 +13,7 @@ measure BOTH:
       d_outlierfree : 1 - fraction of |z|>3 cells   (feature cleanliness)
       d_composite   : mean of the three above
       d_observerQ   : the PAPER's observer quality = completeness x (1 - normalized W1 drift)
-                      [reported too, but note it embeds the reviewer-flagged drift term]
+                      [reported too, but note it embeds the drift term]
   * MODEL-quality deltas on the SACRED outer test (TabPFN deployed):
       d_acc, d_f1
 Held-out protocol: DQ is computed on the cleaned TRAIN; model metrics come from the untouched outer test.
