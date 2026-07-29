@@ -105,3 +105,7 @@ ENV/
 
 # appveyor
 .appveyor.yml
+
+# experiment run artifacts (not source; the wandb pip-freeze snapshots triggered Dependabot alerts)
+experiments/outputs/
+wandb/
