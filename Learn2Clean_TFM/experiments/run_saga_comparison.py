@@ -1,30 +1,3 @@
-"""
-experiments/run_saga_comparison.py
-
-SAGA head-to-head on the strong datasets.
-Runs OUR held-out protocol cleaning method on the SAGA datasets we could source, evaluated
-with LogReg (to match SAGA's multinomial-logreg downstream) AND TabPFN (flagged), and
-tabulates our accuracy next to SAGA's PUBLISHED numbers.
-
-Strong datasets (A — run our method):
-  EEG          14 numeric, 2-class      (ideal fit; OpenML eeg-eye-state)
-  AnimalShelter 8 categorical, 5-class  (encoded; SAGA committed CSVs)
-  Titanic      mixed, 2-class           (leakage cols dropped; encoded)
-Cited only (C — published, not re-run here): Movie, Nashville, Puma (categorical-heavy /
-hard to source the exact version), Cancer, Housing (regression — out of scope).
-
-HONEST CAVEATS baked into the report:
-  * We use each dataset's NATURAL state (no MCAR injection), so our "dirty" baseline is
-    NOT SAGA's CleanML-corrupted version — the OpenML EEG is largely clean, so the
-    comparison is indicative, not a controlled identical-dirt head-to-head.
-  * Our cleaning operators are numeric; categorical features are ordinal-encoded first
-    (SAGA dummy-codes) — a methodological difference.
-  * SAGA uses a 70/30 split; we use 80/20 outer + inner-val. Downstream: LogReg ≈ mLogReg.
-
-Usage
------
-  PYTHONPATH=src:experiments python experiments/run_saga_comparison.py --seeds 42 1 2 3 4
-"""
 from __future__ import annotations
 
 import argparse
@@ -41,7 +14,6 @@ import run_weight_robustness as W
 
 DATA = Path(__file__).parents[1] / "data" / "saga"
 
-# Per-dataset config: file(s), target col, columns to drop (IDs / post-outcome leakage / high-card).
 DATASETS = {
     "EEG": {"files": ["eeg.csv"], "target": "Class", "drop": []},
     "AnimalShelter": {"files": ["animalshelter_train.csv", "animalshelter_test.csv"],
@@ -50,8 +22,7 @@ DATASETS = {
                 "drop": ["name", "ticket", "cabin", "boat", "body", "home.dest"]},
 }
 
-# SAGA paper Table 5 (linear/mLogReg), for the comparison table. R² for cancer/housing.
-SAGA_PUBLISHED = {  # dataset: (dirty, saga, learn2clean_v1)
+SAGA_PUBLISHED = {
     "Animal": (0.70, 0.86, None), "EEG": (0.65, 0.68, 0.67), "Movie": (0.75, 0.85, 0.76),
     "Nashville": (0.79, 0.80, 0.79), "Puma": (0.54, 0.57, 0.51), "Titanic": (0.78, 0.82, 0.73),
     "Cancer": (0.43, 0.52, 0.61), "Housing": (0.81, 0.87, 0.89),
@@ -68,7 +39,6 @@ def load_saga(name: str) -> Optional[tuple]:
     df = df.drop(columns=[c for c in cfg["drop"] if c in df.columns], errors="ignore")
     y_raw = df[cfg["target"]].astype(str)
     X = df.drop(columns=[cfg["target"]])
-    # ordinal-encode object/category columns; keep numerics
     cat = X.select_dtypes(include=["object", "category"]).columns.tolist()
     if cat:
         enc = OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1)
@@ -79,7 +49,6 @@ def load_saga(name: str) -> Optional[tuple]:
 
 
 def select_r7(X_sel, y_sel, pipelines, actions, seed) -> tuple:
-    """Held-out protocol TFM-aware (R7) selection on inner-val only."""
     n0 = len(X_sel); best, best_s = (), -np.inf
     for seq in pipelines:
         Xc = G.apply_pipeline(X_sel, y_sel, seq, actions)
@@ -104,7 +73,6 @@ def run_one(name, seed, pipelines, actions) -> Optional[Dict]:
     if len(X) > G.SUBSAMPLE_CAP:
         X, _, y, _ = train_test_split(X, y, train_size=G.SUBSAMPLE_CAP, random_state=seed, stratify=y)
         X, y = X.reset_index(drop=True), y.reset_index(drop=True)
-    # NATURAL dirty — no injection
     try:
         X_sel, X_test, y_sel, y_test = train_test_split(X, y, test_size=0.30, random_state=seed, stratify=y)
     except ValueError:

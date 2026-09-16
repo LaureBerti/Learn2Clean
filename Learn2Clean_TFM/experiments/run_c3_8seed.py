@@ -1,16 +1,3 @@
-"""
-experiments/run_c3_8seed.py
-
-8-seed driver for C3 (calibration recovery) -> mean +/- 95% CI ECE bands for
-Figure 4. Thin wrapper around run_c3_calibration.main: runs the
-four-error-type ECE sweep once per seed and merges into results_per_seed.csv.
-
-C3 is a deterministic greedy-oracle + TabPFN sweep (no RL), so it is cheap.
-
-Usage:
-  PYTHONPATH=src:experiments python experiments/run_c3_8seed.py \
-      --seeds 42 1 2 3 4 5 6 7 --output-dir outputs/paper_ready/c3_8seed
-"""
 from __future__ import annotations
 import argparse, time
 from pathlib import Path

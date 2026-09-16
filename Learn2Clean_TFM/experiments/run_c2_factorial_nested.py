@@ -1,35 +1,3 @@
-"""
-experiments/run_c2_factorial_nested.py
-
-FAIR 2x2 factorial RF-vs-TFM comparison (addresses the confound that the
-submitted RF-reward and TFM-reward used DIFFERENT weights AND a different functional
-form, so "RF vs TFM" conflated the eval model with the weighting).
-
-Two factors, fully crossed, held-out protocol (same outer/inner split + TabPFN final eval as D1):
-  Factor A — weight config:
-      rfw  : w_acc=0.50 w_ret=0.30 w_qual=0.20  retention^1.0  drift=0.10
-      tfmw : w_acc=0.50 w_ret=0.35 w_qual=0.15  retention^2.0  drift=0.05
-  Factor B — selection eval model (the accuracy proxy in the reward):
-      rf      : RandomForest inner-val accuracy
-      tabpfn  : TabPFN v2  inner-val accuracy
-
-CRITICAL: the scoring function is UNIFIED — identical code path, identical inner-val
-protocol (one inner split), identical drift definition (Wasserstein to the dirty
-pre-cleaning data, faithful to the submitted reward). Within a weight config the ONLY
-thing that changes across the two cells is the eval model; across weight configs only
-(weights, retention power, drift coeff) change. Final accuracy/ECE for every cell is
-reported with TabPFN v2 on the untouched outer test (TabPFN is the deployment model
-regardless of which proxy selected the pipeline).
-
-This lets us estimate, held-out protocol and with multiple seeds:
-  * main effect of the eval model (does selecting with TabPFN beat selecting with RF?),
-  * main effect of the weights,
-  * their interaction (does TabPFN-eval help specifically under the TFM weighting?).
-
-Usage
------
-  PYTHONPATH=src:experiments python experiments/run_c2_factorial_nested.py --seeds 42 1 2 3 4 5 6 7
-"""
 
 from __future__ import annotations
 
@@ -57,8 +25,6 @@ EVAL_MODELS = ["rf", "tabpfn"]
 
 
 def inner_val_acc(X_clean: pd.DataFrame, y: pd.Series, seed: int, eval_model: str) -> float:
-    """UNIFIED selection proxy: one inner train/val split; fit RF or TabPFN; return
-    accuracy on the inner-val (never touches the outer test)."""
     X_arr, y_enc, _ = G._encode_align(X_clean, y)
     if len(y_enc) < 20 or len(np.unique(y_enc)) < 2:
         return float("nan")
@@ -82,8 +48,6 @@ def inner_val_acc(X_clean: pd.DataFrame, y: pd.Series, seed: int, eval_model: st
 
 
 def drift_to_dirty(X_clean: pd.DataFrame, ref_cols: Dict[str, np.ndarray]) -> float:
-    """Mean column-wise normalised Wasserstein-1 distance from cleaned data to the
-    DIRTY pre-cleaning marginals (faithful to the submitted _drift_score)."""
     numeric = X_clean.select_dtypes(include="number")
     dists: List[float] = []
     for col in numeric.columns:
@@ -141,7 +105,6 @@ def run_one(ds_name, seed, pipelines, actions) -> Optional[Dict]:
     X_sel, y_sel = X_sel.reset_index(drop=True), y_sel.reset_index(drop=True)
     X_test, y_test = X_test.reset_index(drop=True), y_test.reset_index(drop=True)
 
-    # dirty reference for drift = pre-cleaning D_sel marginals
     ref_cols = {c: X_sel[c].dropna().values.astype(float)
                 for c in X_sel.select_dtypes(include="number").columns}
 
@@ -164,7 +127,6 @@ def summarize(df: pd.DataFrame) -> None:
     means = {c: df[f"{c}_acc"].dropna().mean() for c in cells}
     for c in cells:
         print(f"  {c:12} acc={means[c]:.4f}")
-    # main effects
     rf_eval  = np.nanmean([df["rfw_rf_acc"], df["tfmw_rf_acc"]])
     tab_eval = np.nanmean([df["rfw_tabpfn_acc"], df["tfmw_tabpfn_acc"]])
     rfw  = np.nanmean([df["rfw_rf_acc"], df["rfw_tabpfn_acc"]])

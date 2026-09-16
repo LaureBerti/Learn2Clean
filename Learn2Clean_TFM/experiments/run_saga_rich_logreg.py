@@ -1,16 +1,3 @@
-"""
-experiments/run_saga_rich_logreg.py
-
-CLEAN operator-richness-vs-SAGA test with the MODEL HELD CONSTANT (LogReg, matching SAGA's mLogReg).
-For each SAGA dataset: greedy-select a cleaning pipeline from the BASE (7-op) pool and from the RICH
-(13,440-pipeline) pool, selecting AND evaluating with LogReg, held-out protocol, 8 seeds. Answers: do rich
-operators close the gap to SAGA's published Table-5 accuracy when we don't change the downstream model?
-
-Reuses run_saga_richops.apply_pipeline / groups_for / load_ds (all rich operators), but swaps the
-TabPFN evaluator for standardized multinomial LogReg both in selection and on the sacred test.
-
-Usage:  PYTHONPATH=src:experiments python experiments/run_saga_rich_logreg.py --seeds 42 1 2 3 4 5 6 7
-"""
 from __future__ import annotations
 import argparse, sys
 from pathlib import Path
@@ -25,7 +12,7 @@ sys.path.insert(0, str(ROOT / "src")); sys.path.insert(0, str(ROOT / "experiment
 import run_saga_richops as R
 import run_c2_tfm_reward_nested as G
 
-SAGA_PUBLISHED = {"EEG": 0.68, "Titanic": 0.82, "AnimalShelter": 0.86}   # paper Table 5 (mLogReg acc)
+SAGA_PUBLISHED = {"EEG": 0.68, "Titanic": 0.82, "AnimalShelter": 0.86}
 
 
 def lr_acc(tr, ytr, te, yte):

@@ -1,32 +1,3 @@
-"""
-experiments/run_dq_vs_model.py
-
-Tests the paper's CORE ASSUMPTION directly: does improving DATA quality improve MODEL quality?
-i.e. is Delta(data-quality) correlated with Delta(model-quality: accuracy / macro-F1)?
-
-For each dataset/seed we enumerate a spread of candidate cleaning pipelines and, per candidate,
-measure BOTH:
-  * DATA-quality deltas vs the no-clean baseline (all MODEL-INDEPENDENT, so the correlation is not
-    circular):
-      d_retention   : fraction of training rows kept
-      d_uniqueness  : 1 - duplicate-row ratio
-      d_outlierfree : 1 - fraction of |z|>3 cells   (feature cleanliness)
-      d_composite   : mean of the three above
-      d_observerQ   : the PAPER's observer quality = completeness x (1 - normalized W1 drift)
-                      [reported too, but note it embeds the drift term]
-  * MODEL-quality deltas on the SACRED outer test (TabPFN deployed):
-      d_acc, d_f1
-Held-out protocol: DQ is computed on the cleaned TRAIN; model metrics come from the untouched outer test.
-
-Output: per-candidate rows (dq_vs_model_per_run.csv) so the Delta(DQ)-vs-Delta(model) relationship can
-be correlated and scatter-plotted; plus Spearman rho per DQ metric x model metric, pooled & per dataset.
-
-Usage
------
-  PYTHONPATH=src:experiments python experiments/run_dq_vs_model.py \
-      --datasets blood_transfusion credit_g hepatitis diabetes ionosphere EEG \
-      --seeds 42 1 2 3 4 5 6 7 --n-cand 16
-"""
 from __future__ import annotations
 import argparse, sys, time
 from pathlib import Path
@@ -37,14 +8,13 @@ from sklearn.metrics import accuracy_score, f1_score
 
 ROOT = Path(__file__).parents[1]
 sys.path.insert(0, str(ROOT / "src")); sys.path.insert(0, str(ROOT / "experiments"))
-import run_prior_distance_faithful as PF   # SCM prior sampler + two-sample distances (no TabPFN import)
-# R (operators/load) and G (TabPFN) imported lazily in run_one.
+import run_prior_distance_faithful as PF
 
 OUTER = 0.2
 MCAR = 0.15
 SUBSAMPLE_CAP = 3000
 DQ_KEYS = ["retention", "uniqueness", "outlierfree", "composite", "observerQ"]
-PRIOR_KEYS = ["c2st", "energy", "mmd"]       # prior-distance (higher = farther from the SCM prior)
+PRIOR_KEYS = ["c2st", "energy", "mmd"]
 
 
 def _numeric(df):
@@ -52,8 +22,6 @@ def _numeric(df):
 
 
 def data_quality(clean_df, dirty_ref_num):
-    """Model-INDEPENDENT data-quality components of a cleaned frame (+ the paper's observer quality
-    vs the dirty reference). All in [0,1], higher = cleaner."""
     num = _numeric(clean_df)
     n = max(len(num), 1)
     completeness = 1.0 - float(num.isna().mean().mean()) if num.shape[1] else 1.0
@@ -68,7 +36,6 @@ def data_quality(clean_df, dirty_ref_num):
     else:
         outlierfree = 1.0
     composite = float(np.mean([retention, uniqueness, outlierfree]))
-    # paper's observer quality = completeness x (1 - normalized col-wise W1 drift from dirty)
     drift = _drift(num, dirty_ref_num)
     observerQ = completeness * (1.0 - min(drift, 1.0))
     return {"retention": retention, "uniqueness": uniqueness, "outlierfree": outlierfree,
@@ -120,7 +87,7 @@ def run_one(name, seed, n_cand):
             return None
         dq = data_quality(tr, dirty_ref)
         try:
-            prior = PF.prior_distances(PF._std(_numeric(tr).values), seed)   # DQ-independent prior-distance
+            prior = PF.prior_distances(PF._std(_numeric(tr).values), seed)
         except Exception:
             prior = {k: np.nan for k in PRIOR_KEYS}
         try:
@@ -144,7 +111,7 @@ def run_one(name, seed, n_cand):
                "acc": acc, "f1": f1, "d_acc": acc - acc0, "d_f1": f1 - f10}
         for k in DQ_KEYS:
             row[f"d_{k}"] = dq[k] - dq0[k]
-        for k in PRIOR_KEYS:                        # absolute prior-distance + delta vs no-clean
+        for k in PRIOR_KEYS:
             row[k] = prior[k]; row[f"d_{k}"] = prior[k] - pr0[k]
         rows.append(row)
     return rows
@@ -170,7 +137,6 @@ def _report(df):
         ra, pa = _rho(df, f"d_{pr}", "d_acc"); rf, pf = _rho(df, f"d_{pr}", "d_f1")
         out[(pr, "acc")] = (ra, pa); out[(pr, "f1")] = (rf, pf)
         print(f"  prior:{pr:7} {ra:+.3f}{star(pa)}       {rf:+.3f}{star(pf)}")
-    # THE TRIANGLE: connect data-quality <-> model <-> prior on the same pipelines
     tri = {
         "Δcomposite-DQ  ~ Δf1     (cleaner data -> better F1?)": _rho(df, "d_composite", "d_f1"),
         "Δcomposite-DQ  ~ Δc2st   (cleaner data -> closer prior?)": _rho(df, "d_composite", "d_c2st"),
@@ -200,7 +166,6 @@ def main(datasets, seeds, n_cand, output_dir):
         print("\n!!! all errored"); [print("  ", r) for r in rows[:5]]; return
     df = df.dropna(subset=["d_composite", "d_acc", "d_f1"])
     out_stats = _report(df)
-    # per-dataset composite correlation
     print("\n  per-dataset rho(Δcomposite, Δf1):")
     for ds, g in df.groupby("dataset"):
         if len(g) > 5:

@@ -1,30 +1,3 @@
-"""
-experiments/analyze_prior_mediation.py
-
-Prior-alignment mediation diagnostic (paper Section 5.4, Table 4).
-
-Question: is distance *to the TabPFN prior* — not distance *from the dirty data* — the
-signal that co-varies with downstream macro-F1?
-
-Given per-pipeline distances to an SCM approximation of the prior (M2_mmd, an RBF-MMD),
-the implemented drift-from-dirty Wasserstein term (M3_marg_w1), and the downstream
-macro-F1 of each cleaned pipeline, we compute WITHIN each (dataset, seed) group and
-average the per-group coefficients (104 groups over the 13 held-out datasets x 8 seeds):
-
-  * raw Spearman rho(distance-to-prior, F1)
-  * partial rho(distance-to-prior, F1 | drift)      -> survives  => prior carries signal
-  * partial rho(drift, F1 | distance-to-prior)      -> vanishes  => drift acts only via prior
-  * rho(drift, distance-to-prior)                   -> +0.50     => cleaning overshoots the prior
-
-Reproduces the Table 4 numbers:
-  distance-to-prior (raw)        rho = -0.177   p = 2e-5
-  distance-to-prior | drift      rho = -0.116   p = 0.019
-  drift | distance-to-prior      rho = -0.063   p = 0.14 (n.s.)
-
-Usage:
-  PYTHONPATH=src python experiments/analyze_prior_mediation.py \
-      --input outputs/paper_ready/prior_distance_MERGED_per_pipe.csv
-"""
 from __future__ import annotations
 
 import argparse
@@ -34,13 +7,12 @@ import numpy as np
 import pandas as pd
 from scipy.stats import rankdata, spearmanr, ttest_1samp
 
-PRIOR = "M2_mmd"        # RBF-MMD distance to the SCM prior
-DRIFT = "M3_marg_w1"    # implemented drift-from-dirty (marginal Wasserstein-1)
-TARGET = "f1"           # downstream TabPFN macro-F1
+PRIOR = "M2_mmd"
+DRIFT = "M3_marg_w1"
+TARGET = "f1"
 
 
 def _partial_spearman(g: pd.DataFrame, x: str, y: str, z: str) -> float:
-    """Partial Spearman rho(x, y | z) = partial Pearson on the rank-transformed columns."""
     R = {c: rankdata(g[c].values) for c in (x, y, z)}
     def resid(a, b):
         B = np.vstack([np.ones_like(b), b]).T
@@ -53,7 +25,6 @@ def _partial_spearman(g: pd.DataFrame, x: str, y: str, z: str) -> float:
 
 
 def _within_group_mean(df: pd.DataFrame, fn) -> tuple[float, float, int]:
-    """Average a per-(dataset,seed) coefficient; report a one-sample t-test vs 0."""
     vals = []
     for _, g in df.groupby(["dataset", "seed"]):
         if len(g) < 8:

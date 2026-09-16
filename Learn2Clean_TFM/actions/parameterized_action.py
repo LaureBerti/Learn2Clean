@@ -1,17 +1,3 @@
-"""
-ParameterizedAction — V3 improvement #3.
-
-Extends DataFrameAction so that each action exposes a structured
-hyperparameter space.  The environment can pass continuous or discrete
-parameter vectors alongside the action index, enabling a mixed
-discrete-continuous action space (e.g., PPO with Dict action spaces).
-
-Concrete examples shipped with V3:
-
-    ParameterizedImputer  — strategy (mean/median/knn/mice) + n_neighbors
-    ParameterizedOutlier  — method (iqr/zscore) + threshold
-    ParameterizedScaler   — method (minmax/zscore/quantile)
-"""
 
 from __future__ import annotations
 
@@ -31,26 +17,19 @@ from learn2clean_v3.types import Features, OptionalTarget, ParamSpec
 
 
 class ParameterizedAction(DataFrameAction):
-    """
-    A DataFrameAction whose behaviour is controlled by typed hyperparameters.
-
-    Subclasses declare their parameter space via ``param_specs``.
-    The env calls ``set_params(**kwargs)`` before ``__call__``.
-    """
 
     @property
     @abstractmethod
     def param_specs(self) -> List[ParamSpec]:
-        """Declare the hyperparameter space."""
+        pass
 
     def set_params(self, **params: Any) -> "ParameterizedAction":
-        """Apply hyperparameters; returns self for chaining."""
         valid = {s.name for s in self.param_specs}
         for k, v in params.items():
             if k not in valid:
                 raise ValueError(f"{self.__class__.__name__}: unknown param '{k}'")
             setattr(self, f"_{k}", v)
-        self.reset()   # force re-fit with new params
+        self.reset()
         return self
 
     def default_params(self) -> Dict[str, Any]:
@@ -60,26 +39,12 @@ class ParameterizedAction(DataFrameAction):
         return {s.name: getattr(self, f"_{s.name}", s.default) for s in self.param_specs}
 
     def clone_with(self, **params: Any) -> "ParameterizedAction":
-        """Return a deep-copy with updated parameters."""
         clone = deepcopy(self)
         return clone.set_params(**params)
 
 
-# ---------------------------------------------------------------------------
-# Concrete implementations
-# ---------------------------------------------------------------------------
 
 class ParameterizedImputer(ParameterizedAction):
-    """
-    Missing-value imputation with a selectable strategy.
-
-    Hyperparameters
-    ---------------
-    strategy : str
-        One of "mean", "median", "most_frequent", "knn".
-    n_neighbors : int
-        Number of neighbours for KNN imputation (ignored for others).
-    """
 
     _STRATEGIES = ("mean", "median", "most_frequent", "knn")
 
@@ -133,16 +98,6 @@ class ParameterizedImputer(ParameterizedAction):
 
 
 class ParameterizedOutlierCleaner(ParameterizedAction):
-    """
-    Outlier removal with a selectable detection method and threshold.
-
-    Hyperparameters
-    ---------------
-    method : str
-        "iqr" or "zscore".
-    threshold : float
-        IQR multiplier (IQR method) or z-score cut-off (zscore method).
-    """
 
     def __init__(
         self,
@@ -198,16 +153,6 @@ class ParameterizedOutlierCleaner(ParameterizedAction):
 
 
 class ParameterizedScaler(ParameterizedAction):
-    """
-    Feature scaling with a selectable normalisation method.
-
-    Hyperparameters
-    ---------------
-    method : str
-        "minmax", "zscore", or "quantile".
-    quantile_output : str
-        Output distribution for quantile scaler: "uniform" or "normal".
-    """
 
     def __init__(
         self,
@@ -259,25 +204,8 @@ class ParameterizedScaler(ParameterizedAction):
         return result
 
 
-# ---------------------------------------------------------------------------
-# Deduplication
-# ---------------------------------------------------------------------------
 
 class ParameterizedDeduplicator(ParameterizedAction):
-    """
-    Remove exact duplicate rows from the feature matrix.
-
-    Hyperparameters
-    ---------------
-    keep : str
-        Which occurrence to retain when a duplicate is found.
-        "first" — keep the first occurrence (default).
-        "last"  — keep the last occurrence.
-    subset : str
-        Column subset used to identify duplicates.
-        "all" — all columns must match (exact row duplicate).
-        "numeric" — only numeric columns are compared.
-    """
 
     def __init__(
         self,
@@ -285,7 +213,6 @@ class ParameterizedDeduplicator(ParameterizedAction):
         subset: str = "all",
         **kwargs: Any,
     ) -> None:
-        # dtype_filter="all" so the action sees the full DataFrame
         super().__init__(dtype_filter="all", **kwargs)
         self._keep = keep
         self._subset = subset
@@ -308,7 +235,6 @@ class ParameterizedDeduplicator(ParameterizedAction):
         ]
 
     def fit(self, df: Features, y: OptionalTarget = None) -> "ParameterizedDeduplicator":
-        # Nothing to fit — deduplication is purely data-driven at transform time.
         self._is_fitted = True
         return self
 
@@ -317,7 +243,7 @@ class ParameterizedDeduplicator(ParameterizedAction):
             num_cols: Optional[List[str]] = df.select_dtypes(include=[np.number]).columns.tolist()
             subset_arg = num_cols if num_cols else None
         else:
-            subset_arg = None  # pandas default: all columns
+            subset_arg = None
 
         result = df.drop_duplicates(subset=subset_arg, keep=self._keep)
         return result.reset_index(drop=True)

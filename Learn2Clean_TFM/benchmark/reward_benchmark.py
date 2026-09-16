@@ -1,42 +1,3 @@
-"""
-RewardBenchmark — V3 improvement #9 (new module).
-
-Systematically compares multiple reward functions on the same dataset and
-action space.  For each reward function it:
-
-  1. Creates a fresh SequentialCleaningEnvV3 instance.
-  2. Wraps with an ExplainableReward so per-action deltas are captured.
-  3. Trains a PPO agent for ``n_episodes`` * ``max_steps`` total steps.
-  4. Evaluates the learned policy for ``n_eval_episodes``.
-  5. Records learning curve, final reward, convergence step, and
-     the discovered action sequence.
-
-Results are returned as a BenchmarkResults object and can be plotted.
-
-Reward functions included by default
--------------------------------------
-  CompletenessRetentionReward  — V2 baseline
-  AccuracyReward               — pure ML performance
-  MultiObjectiveReward         — weighted accuracy + retention + quality
-  DriftPenaltyReward           — accuracy penalised by distribution drift
-  IncrementalGainReward        — reward step-deltas, not absolute score
-
-Usage
------
-    from learn2clean_v3.benchmark.reward_benchmark import RewardBenchmark, default_reward_functions
-
-    bench = RewardBenchmark(
-        X=df,
-        y=labels,
-        actions=my_actions,
-        reward_functions=default_reward_functions(),
-        n_episodes=200,
-        n_eval_episodes=20,
-    )
-    results = bench.run()
-    print(results.as_dataframe())
-    bench.plot(results)
-"""
 
 from __future__ import annotations
 
@@ -74,7 +35,6 @@ logger = logging.getLogger(__name__)
 
 
 def default_reward_functions() -> List[BaseReward]:
-    """Return the standard suite of reward functions for benchmarking."""
     return [
         CompletenessRetentionReward(),
         AccuracyReward(eval_model="random_forest"),
@@ -95,25 +55,6 @@ def default_reward_functions() -> List[BaseReward]:
 
 
 class RewardBenchmark:
-    """
-    Parameters
-    ----------
-    X : Features
-    y : OptionalTarget
-    actions : list[DataFrameAction]
-    reward_functions : list[BaseReward]
-    n_episodes : int
-        Training budget per reward function (in full episodes).
-    n_eval_episodes : int
-        Deterministic evaluation episodes after training.
-    max_steps : int
-        Steps per episode.
-    seed : int
-    output_dir : str | None
-        If set, saves per-reward learning curves as CSV.
-    verbose : int
-        SB3 verbosity level.
-    """
 
     def __init__(
         self,
@@ -139,10 +80,8 @@ class RewardBenchmark:
         self._output_dir = Path(output_dir) if output_dir else None
         self._verbose = verbose
 
-    # ------------------------------------------------------------------
 
     def run(self) -> BenchmarkResults:
-        """Run the full benchmark; returns BenchmarkResults."""
         entries: List[BenchmarkEntry] = []
 
         for reward_fn in self._reward_fns:
@@ -164,10 +103,8 @@ class RewardBenchmark:
         self._print_summary(results)
         return results
 
-    # ------------------------------------------------------------------
 
     def _run_one(self, reward_fn: BaseReward) -> BenchmarkEntry:
-        """Train and evaluate one reward function."""
         try:
             from stable_baselines3 import PPO
             from stable_baselines3.common.callbacks import BaseCallback
@@ -176,7 +113,6 @@ class RewardBenchmark:
         except ImportError as exc:
             raise ImportError("stable-baselines3 required for benchmarking.") from exc
 
-        # Wrap in ExplainableReward so we capture per-step deltas
         explainable = ExplainableReward(reward_fn)
 
         def make_env():
@@ -192,7 +128,6 @@ class RewardBenchmark:
 
         vec_env = DummyVecEnv([make_env])
 
-        # Training callback to record episode rewards
         episode_rewards: List[float] = []
 
         class _RecordCallback(BaseCallback):
@@ -218,7 +153,6 @@ class RewardBenchmark:
             warnings.simplefilter("ignore")
             model.learn(total_timesteps=total_timesteps, callback=_RecordCallback())
 
-        # Evaluate deterministically
         final_rewards: List[float] = []
         final_sequences: List[List[int]] = []
 
@@ -245,11 +179,9 @@ class RewardBenchmark:
         final_reward = float(np.mean(final_rewards))
         convergence_step = self._find_convergence(episode_rewards)
 
-        # Best action sequence (from highest-reward eval episode)
         best_idx = int(np.argmax(final_rewards))
         best_seq = final_sequences[best_idx]
 
-        # Last reward components if available
         last_components: Optional[RewardComponents] = None
         if isinstance(reward_fn, MultiObjectiveReward):
             last_components = reward_fn.last_components
@@ -265,10 +197,8 @@ class RewardBenchmark:
             reward_components=last_components,
         )
 
-    # ------------------------------------------------------------------
 
     def plot(self, results: BenchmarkResults, show: bool = True) -> None:
-        """Plot learning curves for all reward functions."""
         try:
             import plotly.graph_objects as go
         except ImportError:
@@ -293,7 +223,6 @@ class RewardBenchmark:
             fig.show()
 
     def plot_bar(self, results: BenchmarkResults, show: bool = True) -> None:
-        """Bar chart of final performance per reward function."""
         try:
             import plotly.express as px
         except ImportError:
@@ -312,9 +241,6 @@ class RewardBenchmark:
         if show:
             fig.show()
 
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
 
     @staticmethod
     def _smooth(values: List[float], window: int = 10) -> List[float]:
@@ -325,7 +251,6 @@ class RewardBenchmark:
 
     @staticmethod
     def _find_convergence(rewards: List[float], patience: int = 20, tol: float = 0.01) -> Optional[int]:
-        """Return the episode at which the smoothed reward stops improving."""
         if len(rewards) < patience * 2:
             return None
         smoothed = RewardBenchmark._smooth(rewards, window=patience)

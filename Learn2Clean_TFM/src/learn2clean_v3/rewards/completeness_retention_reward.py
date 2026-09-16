@@ -1,4 +1,3 @@
-"""V2-compatible completeness × sqrt(retention) reward (baseline)."""
 
 from __future__ import annotations
 
@@ -9,13 +8,6 @@ from learn2clean_v3.types import Features, OptionalTarget
 
 
 class CompletenessRetentionReward(BaseReward):
-    """
-    Baseline reward from Learn2Clean V2.
-
-    completeness = 1 − (missing_cells / total_cells)
-    retention    = current_rows / original_rows
-    reward       = completeness × sqrt(retention)
-    """
 
     def __init__(self) -> None:
         self._original_n_rows: int = 1

@@ -1,42 +1,3 @@
-"""
-experiments/run_diffprep_pyimpl.py
-
-FAITHFUL Python reimplementation of DiffPrep (Li, Chen, Chu, Rong; PACMMOD 2023, "DiffPrep:
-Differentiable Data Preprocessing Pipeline Search for Learning over Tabular Data") --- the
-DiffPrep-Fix variant (fixed transformation-step order). Lets us report a DiffPrep accuracy AND
-wall-clock on OUR datasets / OUR held-out protocol split, complementing its published numbers.
-
-Method (what we mirror):
-  * A fixed-order pipeline of preprocessing STEPS (imputation -> outlier -> normalization). Each step
-    has a few candidate operators.
-  * CONTINUOUS RELAXATION: each step's output is a softmax-weighted mixture of its candidates'
-    outputs, x_out = sum_c softmax(alpha_step)_c * op_c(x_in). All operators are differentiable in x
-    (constant-fill imputation, clamp-based outlier capping, affine normalization with train-fit
-    stats), so gradients flow to the architecture parameters alpha.
-  * BI-LEVEL optimisation (first-order DARTS): the downstream model weights w are updated on the
-    TRAIN split; the architecture params alpha are updated on the VALIDATION split; alternated.
-  * Downstream model: logistic regression (a single linear layer + softmax CE) --- DiffPrep's
-    primary learner.
-  * After search, alpha is discretised (argmax per step); we retrain a fresh LR on the discovered
-    discrete pipeline and report test accuracy (discover-then-retrain, as in the paper).
-
-HELD-OUT PROTOCOL: outer 80/20 sacred test never seen by the search; transform stats are fit on train rows
-only; alpha is tuned on an inner validation split; the discrete pipeline is finally fit on the full
-outer-train and evaluated once on the sacred test.
-
-Reported per (dataset, seed):
-  diffprep_clean_acc/_f1     : discovered discrete pipeline, LR, on the sacred test
-  diffprep_dirty_acc/_f1     : no-preprocessing baseline (mean-impute only), LR, same test
-  diffprep_clean_acc_tabpfn  : the SAME discovered pipeline deployed on TabPFN (head-to-head)
-  diffprep_sec               : wall-clock of the differentiable search
-  arch                       : the discovered (impute, outlier, normalize) operators
-
-Usage
------
-  PYTHONPATH=src:experiments python experiments/run_diffprep_pyimpl.py \
-      --datasets EEG Titanic AnimalShelter hepatitis ionosphere diabetes blood_transfusion credit_g \
-      --seeds 42 1 2 3 4 5 6 7 [--with-tabpfn]
-"""
 from __future__ import annotations
 import argparse, sys, time
 from pathlib import Path
@@ -48,28 +9,22 @@ from sklearn.metrics import accuracy_score, f1_score
 
 ROOT = Path(__file__).parents[1]
 sys.path.insert(0, str(ROOT / "src")); sys.path.insert(0, str(ROOT / "experiments"))
-# R (load_ds/mcar) and G (TabPFN deploy + caps) are imported LAZILY inside run_one(): both pull in
-# TabPFN at import time, which we don't want to require to import/test the differentiable core.
 
-OUTER = 0.2                           # sacred outer-test fraction (matches G.OUTER_TEST_SIZE)
-MCAR = 0.15                           # corruption rate (matches R.MCAR)
-SUBSAMPLE_CAP = 3000                  # fallback; overridden by G.SUBSAMPLE_CAP at runtime
-INNER = 0.25                          # inner train/val split for the bi-level search
+OUTER = 0.2
+MCAR = 0.15
+SUBSAMPLE_CAP = 3000
+INNER = 0.25
 EPOCHS, LR_W, LR_A = 150, 5e-2, 5e-2
 
-IMPUTE_CANDS   = ["mean", "median", "zero"]               # missing-value imputation
-OUTLIER_CANDS  = ["none", "sd3", "iqr"]                   # identity / clip 3-sigma / clip 1.5-IQR
-NORMAL_CANDS   = ["none", "standard", "minmax", "robust"] # identity / z-score / min-max / robust
+IMPUTE_CANDS   = ["mean", "median", "zero"]
+OUTLIER_CANDS  = ["none", "sd3", "iqr"]
+NORMAL_CANDS   = ["none", "standard", "minmax", "robust"]
 STEPS = [("impute", IMPUTE_CANDS), ("outlier", OUTLIER_CANDS), ("normalize", NORMAL_CANDS)]
 
 
-# ---------------------------------------------------------------------------------------------
-# Train-fit statistics (computed on train rows only; reused for val/test => held-out protocol)
-# ---------------------------------------------------------------------------------------------
 def fit_stats(Xtr_np):
     col_mean = np.nanmean(Xtr_np, axis=0); col_mean = np.nan_to_num(col_mean, nan=0.0)
     col_med  = np.nanmedian(Xtr_np, axis=0); col_med = np.nan_to_num(col_med, nan=0.0)
-    # outlier/normalize stats computed on mean-imputed train (a stable reference grid)
     Xi = np.where(np.isnan(Xtr_np), col_mean, Xtr_np)
     mu, sd = Xi.mean(0), Xi.std(0) + 1e-8
     mn, mx = Xi.min(0), Xi.max(0)
@@ -77,22 +32,17 @@ def fit_stats(Xtr_np):
     return dict(mean=col_mean, median=col_med, mu=mu, sd=sd, mn=mn, mx=mx, q1=q1, q3=q3, iqr=iqr)
 
 
-def T(s, dev):  # numpy stat -> tensor
+def T(s, dev):
     return torch.tensor(s, dtype=torch.float32, device=dev)
 
 
-# ---------------------------------------------------------------------------------------------
-# Differentiable soft pipeline (gradients flow to alpha)
-# ---------------------------------------------------------------------------------------------
 def step_candidates(name, x, st, dev):
-    """Return list of candidate-operator outputs for a step, given current tensor x.
-    `impute` additionally consumes the missingness mask carried on x (handled by caller)."""
     if name == "outlier":
         mu, sd = T(st["mu"], dev), T(st["sd"], dev)
         q1, q3, iqr = T(st["q1"], dev), T(st["q3"], dev), T(st["iqr"], dev)
         return [x,
-                torch.clamp(x, mu - 3 * sd, mu + 3 * sd),                 # 3-sigma cap
-                torch.clamp(x, q1 - 1.5 * iqr, q3 + 1.5 * iqr)]           # 1.5-IQR cap
+                torch.clamp(x, mu - 3 * sd, mu + 3 * sd),
+                torch.clamp(x, q1 - 1.5 * iqr, q3 + 1.5 * iqr)]
     if name == "normalize":
         return [x,
                 (x - T(st["mu"], dev)) / T(st["sd"], dev),
@@ -109,13 +59,11 @@ class SoftPipeline(nn.Module):
         self.clf = nn.Linear(d, n_classes)
 
     def forward(self, x0, mask):
-        # step 0: imputation (mixture over fill vectors at the missing entries)
         fills = [T(self.st["mean"], self.dev), T(self.st["median"], self.dev),
                  torch.zeros_like(T(self.st["mean"], self.dev))]
         w_imp = F.softmax(self.alpha[0], dim=0)
-        fill = sum(w_imp[c] * fills[c] for c in range(len(fills)))      # (d,)
-        x = x0 * (1 - mask) + fill * mask                              # observed kept, missing mixed
-        # steps 1..: outlier, normalize
+        fill = sum(w_imp[c] * fills[c] for c in range(len(fills)))
+        x = x0 * (1 - mask) + fill * mask
         for si in range(1, len(STEPS)):
             name = STEPS[si][0]
             cands = step_candidates(name, x, self.st, self.dev)
@@ -142,20 +90,15 @@ def diffprep_search(Xtr_np, ytr_idx, Xva_np, yva_idx, st, n_classes, seed):
     w_opt = torch.optim.Adam(model.clf.parameters(), lr=LR_W, weight_decay=1e-4)
     a_opt = torch.optim.Adam(model.alpha.parameters(), lr=LR_A)
     for _ in range(EPOCHS):
-        # (1) update model weights w on TRAIN
         model.train(); w_opt.zero_grad()
         loss_tr = F.cross_entropy(model(x0_tr, m_tr), yt)
         loss_tr.backward(); w_opt.step()
-        # (2) update architecture alpha on VALIDATION (first-order DARTS)
         a_opt.zero_grad()
         loss_va = F.cross_entropy(model(x0_va, m_va), yv)
         loss_va.backward(); a_opt.step()
     return model.arch()
 
 
-# ---------------------------------------------------------------------------------------------
-# Discrete pipeline (numpy) for the final discover-then-retrain deployment
-# ---------------------------------------------------------------------------------------------
 def apply_discrete(arch, Xtr_np, Xte_np):
     st = fit_stats(Xtr_np)
     imp, otl, nrm = arch
@@ -195,7 +138,7 @@ def deploy_lr(arch, Xtr_np, ytr, Xte_np, yte):
 
 
 def deploy_tabpfn(arch, Xtr_np, ytr, Xte_np, yte, seed):
-    import run_c2_tfm_reward_nested as G   # lazy: pulls TabPFN at import
+    import run_c2_tfm_reward_nested as G
     tr, te = apply_discrete(arch, Xtr_np, Xte_np)
     try:
         yp, _ = G._tabpfn_fit_predict(tr, ytr, te, seed)
@@ -205,7 +148,7 @@ def deploy_tabpfn(arch, Xtr_np, ytr, Xte_np, yte, seed):
 
 
 def run_one(name, seed, with_tabpfn):
-    import run_saga_richops as R          # lazy: pulls TabPFN at import
+    import run_saga_richops as R
     cap = getattr(__import__("run_c2_tfm_reward_nested"), "SUBSAMPLE_CAP", SUBSAMPLE_CAP)
     X, y = R.load_ds(name)
     if len(X) > cap:

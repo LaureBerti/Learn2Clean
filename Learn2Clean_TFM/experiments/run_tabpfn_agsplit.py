@@ -1,14 +1,3 @@
-"""
-experiments/run_tabpfn_agsplit.py
-
-Byte-identical companion to `run_automl_baselines.py` for verdict ⑫: run OUR cleaning+TabPFN on the
-EXACT same data preparation AutoGluon/Auto-sklearn saw — same load, same 8000-row cap (random_state=0),
-same MCAR-15%, same 70/30 stratified split (random_state=seed) — so ours-vs-AutoGluon is on identical
-splits. Selection is held-out protocol R7 (TabPFN inner-val accuracy, base operator pool) on the 70% train
-only; the 30% test is scored once with TabPFN.
-
-Usage: PYTHONPATH=src:experiments python experiments/run_tabpfn_agsplit.py --seeds 42 1 2
-"""
 from __future__ import annotations
 import argparse, sys
 from pathlib import Path
@@ -17,7 +6,7 @@ from sklearn.model_selection import train_test_split
 
 ROOT = Path(__file__).parents[1]
 sys.path.insert(0, str(ROOT / "src")); sys.path.insert(0, str(ROOT / "experiments"))
-import run_saga_richops as R   # load_ds, apply_pipeline, groups_for, select_pipeline, test_metrics
+import run_saga_richops as R
 
 SAGA = {"EEG", "AnimalShelter", "Titanic"}
 OPENML = ["hepatitis", "heart_statlog", "ionosphere", "blood_transfusion", "diabetes",
@@ -33,24 +22,22 @@ def mcar(X, rate, seed):
 
 def run_one(name, seed):
     X, y = R.load_ds(name)
-    if len(X) > 8000:                                            # EXACT AutoML cap
+    if len(X) > 8000:
         X, _, y, _ = train_test_split(X, y, train_size=8000, random_state=0, stratify=y)
         X, y = X.reset_index(drop=True), y.reset_index(drop=True)
-    Xd = mcar(X, 0.15, seed)                                     # EXACT AutoML corruption
+    Xd = mcar(X, 0.15, seed)
     try:
         Xtr, Xte, ytr, yte = train_test_split(Xd, y, test_size=0.3, random_state=seed, stratify=y)
     except ValueError:
         Xtr, Xte, ytr, yte = train_test_split(Xd, y, test_size=0.3, random_state=seed)
     Xtr, ytr = Xtr.reset_index(drop=True), ytr.reset_index(drop=True)
     Xte, yte = Xte.reset_index(drop=True), yte.reset_index(drop=True)
-    # held-out protocol selection on the 70% train (base pool) under BOTH objectives, deploy TabPFN on 30% test.
-    # Report matched-metric: accuracy from R7acc-selection, macro-F1 from R7F1-selection (verdict ⑭).
     pa, _ = R.select_pipeline(Xtr, ytr, False, seed, "tabpfn", "acc")
     pf, _ = R.select_pipeline(Xtr, ytr, False, seed, "tabpfn", "f1")
     ma = R.test_metrics(Xtr, ytr, Xte, yte, pa, seed)
     mf = R.test_metrics(Xtr, ytr, Xte, yte, pf, seed)
     return {"dataset": name, "seed": seed,
-            "acc": ma["acc"], "f1": mf["f1"],              # matched-metric headline
+            "acc": ma["acc"], "f1": mf["f1"],
             "R7acc_acc": ma["acc"], "R7acc_f1": ma["f1"],
             "R7f1_acc": mf["acc"], "R7f1_f1": mf["f1"]}
 

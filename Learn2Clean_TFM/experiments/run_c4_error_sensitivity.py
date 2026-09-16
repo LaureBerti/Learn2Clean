@@ -1,39 +1,3 @@
-"""
-experiments/run_c4_error_sensitivity.py
-
-C4 — Error Sensitivity Sweep
-==============================
-Claim: "Accuracy and calibration benefit of prior-aligned cleaning over B1 grows
-monotonically with MCAR rate 5%→30%."
-
-Design
-------
-* Use 5 representative datasets:
-    D1 hepatitis, D3 ionosphere, D5 diabetes, D7 kr_vs_kp, D9 adult
-* Sweep MCAR ∈ {0%, 5%, 10%, 15%, 20%, 30%} on each dataset.
-* For each (dataset, rate): compute TabPFN accuracy and ECE for:
-    B0           — no cleaning
-    B1           — mean imputation + minmax scaling
-    B-greedy-TFM — best of 112 pipelines scored with TFMAwareReward(TabPFN)
-* Compute "benefit" = B-greedy-TFM acc − B1 acc; check monotonicity across rates.
-* Monotonicity criterion: Spearman ρ(rate, benefit) > 0.8 on ≥4/5 datasets.
-
-Dependency check
-----------------
-TabPFN v2 must be installed:  pip install tabpfn>=2.0
-
-Outputs
--------
-  outputs/paper_ready/c4_error_sensitivity/
-    results.csv          — (dataset, mcar_rate, baseline, tabpfn_acc, ece)
-    c4_sensitivity.tex   — LaTeX table for the paper
-
-Usage
------
-  PYTHONPATH=src python experiments/run_c4_error_sensitivity.py
-  PYTHONPATH=src python experiments/run_c4_error_sensitivity.py --output-dir /tmp/c4
-  PYTHONPATH=src python experiments/run_c4_error_sensitivity.py --seed 0
-"""
 
 from __future__ import annotations
 
@@ -53,11 +17,8 @@ from sklearn.impute import SimpleImputer
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 
-# ---------------------------------------------------------------------------
-# Dependency check
-# ---------------------------------------------------------------------------
 try:
-    import tabpfn as _tabpfn_check  # noqa: F401
+    import tabpfn as _tabpfn_check
     TABPFN_AVAILABLE = True
 except ImportError:
     TABPFN_AVAILABLE = False
@@ -71,9 +32,6 @@ if not TABPFN_AVAILABLE:
     )
     sys.exit("Install tabpfn>=2.0 first")
 
-# ---------------------------------------------------------------------------
-# Local imports
-# ---------------------------------------------------------------------------
 sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
 
 from learn2clean_v3.actions import (
@@ -90,17 +48,13 @@ from learn2clean_v3.rewards import TFMAwareReward
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s | %(message)s")
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
 
-# Five representative datasets (D1/D3/D5/D7/D9)
 REPRESENTATIVE_DATASETS: List[str] = [
-    "hepatitis",    # D1 — XS, natural missing
-    "ionosphere",   # D3 — XS, no natural missing
-    "diabetes",     # D5 — S,  natural missing (Pima zeros)
-    "kr_vs_kp",     # D7 — M,  no natural missing
-    "adult",        # D9 — L,  natural missing
+    "hepatitis",
+    "ionosphere",
+    "diabetes",
+    "kr_vs_kp",
+    "adult",
 ]
 
 MCAR_RATES: List[float] = [0.0, 0.05, 0.10, 0.15, 0.20, 0.30]
@@ -110,7 +64,7 @@ N_BINS_ECE: int = 10
 ACTION_GROUPS: Dict[int, str] = {
     0: "impute",  1: "impute",  2: "impute",
     3: "outlier", 4: "outlier",
-    5: "scale",   6: "scale",   8: "scale",  # three normalisation alternatives
+    5: "scale",   6: "scale",   8: "scale",
     7: "dedup",
 }
 ACTION_LABELS: Dict[int, str] = {
@@ -121,23 +75,18 @@ ACTION_LABELS: Dict[int, str] = {
 }
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 def build_actions() -> List[DataFrameAction]:
-    # Index order must match ACTION_GROUPS / ACTION_LABELS
-    # 0-2: imputers | 3-4: outlier | 5-6,8: scalers | 7: dedup
     return [
-        ParameterizedImputer(strategy="mean"),           # 0
-        ParameterizedImputer(strategy="median"),          # 1
-        ParameterizedImputer(strategy="knn", n_neighbors=5),  # 2
-        ParameterizedOutlierCleaner(method="iqr",    threshold=1.5),  # 3
-        ParameterizedOutlierCleaner(method="zscore", threshold=3.0),  # 4
-        ParameterizedScaler(method="minmax"),             # 5
-        ParameterizedScaler(method="zscore"),             # 6
-        ParameterizedDeduplicator(keep="first", subset="all"),  # 7
-        ParameterizedScaler(method="quantile"),           # 8
+        ParameterizedImputer(strategy="mean"),
+        ParameterizedImputer(strategy="median"),
+        ParameterizedImputer(strategy="knn", n_neighbors=5),
+        ParameterizedOutlierCleaner(method="iqr",    threshold=1.5),
+        ParameterizedOutlierCleaner(method="zscore", threshold=3.0),
+        ParameterizedScaler(method="minmax"),
+        ParameterizedScaler(method="zscore"),
+        ParameterizedDeduplicator(keep="first", subset="all"),
+        ParameterizedScaler(method="quantile"),
     ]
 
 
@@ -174,7 +123,6 @@ def apply_pipeline(
 
 
 def apply_b1_baseline(X: pd.DataFrame) -> pd.DataFrame:
-    """B1: mean imputation + minmax scaling on numeric columns."""
     numeric_cols = X.select_dtypes(include="number").columns.tolist()
     X_out = X.copy()
     if numeric_cols:
@@ -186,7 +134,6 @@ def apply_b1_baseline(X: pd.DataFrame) -> pd.DataFrame:
 
 
 def compute_ece(y_true: np.ndarray, y_prob: np.ndarray, n_bins: int = 10) -> float:
-    """Expected Calibration Error: Σ |conf − acc| × n_bin / n_total."""
     n_total = len(y_true)
     if n_total == 0:
         return float("nan")
@@ -215,7 +162,6 @@ def evaluate_with_tabpfn(
     y: pd.Series,
     seed: int = 42,
 ) -> Tuple[float, float]:
-    """Fit TabPFN v2 on X_clean; return (accuracy, ECE)."""
     from tabpfn import TabPFNClassifier
 
     numeric = X_clean.select_dtypes(include="number")
@@ -273,7 +219,6 @@ def sample_pipelines(
     max_n: int,
     seed: int = 42,
 ) -> List[Tuple[int, ...]]:
-    """Stratified subsample: always keep no-op + all 1-step; fill rest proportionally."""
     if max_n <= 0 or max_n >= len(pipelines):
         return pipelines
 
@@ -308,7 +253,6 @@ def build_cleaning_cache(
     actions: List[DataFrameAction],
     pipelines: List[Tuple[int, ...]],
 ) -> Dict[Tuple, Optional[pd.DataFrame]]:
-    """Apply every pipeline to X_dirty ONCE and cache the results."""
     return {seq: apply_pipeline(X_dirty, y, seq, actions) for seq in pipelines}
 
 
@@ -317,7 +261,6 @@ def build_tabpfn_cache(
     y: pd.Series,
     seed: int,
 ) -> Dict[Tuple, Tuple[float, float]]:
-    """Call TabPFN on each cached cleaned dataset exactly once."""
     result: Dict[Tuple, Tuple[float, float]] = {}
     for seq, X_out in cleaning_cache.items():
         if X_out is None:
@@ -334,7 +277,6 @@ def best_from_tfm_cache(
     n0: int,
     tfm_reward: TFMAwareReward,
 ) -> Tuple[int, ...]:
-    """Select best pipeline using pre-computed TabPFN scores (no new TabPFN calls)."""
     w_acc  = getattr(tfm_reward, "weight_accuracy",  0.50)
     w_ret  = getattr(tfm_reward, "weight_retention", 0.35)
     w_qual = getattr(tfm_reward, "weight_quality",   0.15)
@@ -360,23 +302,17 @@ def best_from_tfm_cache(
     return best_pipeline
 
 
-# ---------------------------------------------------------------------------
-# LaTeX table
-# ---------------------------------------------------------------------------
 
 def make_latex_table_c4(results_df: pd.DataFrame) -> str:
-    """C4 LaTeX table: per-dataset rows, columns = (rate × baseline acc+ece)."""
     rates = sorted(results_df["mcar_rate"].unique())
     baselines = ["B0", "B1", "B-greedy-TFM"]
 
-    # Pivot: one row per (dataset, rate), columns = baselines
     pivot = results_df.pivot_table(
         index=["dataset", "mcar_rate"],
         columns="baseline",
         values="tabpfn_acc",
     ).reset_index()
 
-    # Benefit column
     if "B1" in pivot.columns and "B-greedy-TFM" in pivot.columns:
         pivot["benefit"] = pivot["B-greedy-TFM"] - pivot["B1"]
 
@@ -418,9 +354,6 @@ def make_latex_table_c4(results_df: pd.DataFrame) -> str:
     return "\n".join(lines)
 
 
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
 
 def main(
     output_dir: Optional[str] = None,
@@ -443,7 +376,7 @@ def main(
     print(f"MCAR rates: {MCAR_RATES}")
 
     all_results: List[Dict] = []
-    dataset_timing: List[Dict] = []   # one row per (dataset, mcar_rate)
+    dataset_timing: List[Dict] = []
     t0_total = time.time()
 
     for ds_name in REPRESENTATIVE_DATASETS:
@@ -482,7 +415,6 @@ def main(
                 "actual_missing_rate": round(miss_pct, 4),
             }
 
-            # B0 — no cleaning
             t_b0 = time.time()
             acc_b0, ece_b0 = evaluate_with_tabpfn(X_dirty, y_dirty, seed=seed)
             t_b0 = round(time.time() - t_b0, 3)
@@ -491,7 +423,6 @@ def main(
                                  "time_search_s": 0.0, "time_eval_s": t_b0,
                                  "n_pipelines": 0, "best_pipeline": "no_op"})
 
-            # B1 — mean + minmax
             t_b1 = time.time()
             X_b1 = apply_b1_baseline(X_dirty)
             acc_b1, ece_b1 = evaluate_with_tabpfn(X_b1, y_dirty, seed=seed)
@@ -502,7 +433,6 @@ def main(
                                  "n_pipelines": 0,
                                  "best_pipeline": "impute(mean) → scale(minmax)"})
 
-            # B-greedy-TFM — Option 2: shared cleaning + TabPFN cache
             tfm_reward = TFMAwareReward(
                 weight_accuracy=0.50, weight_retention=0.35, weight_quality=0.15,
                 drift_penalty_coeff=0.05, eval_model="tabpfn",
@@ -515,9 +445,8 @@ def main(
                 cleaning_cache, tabpfn_cache, X_dirty, len(X_dirty), tfm_reward
             )
             t_tfm_search = round(time.time() - t_search, 3)
-            # Final result: cache lookup (no extra TabPFN call)
             acc_tfm, ece_tfm = tabpfn_cache.get(best_tfm, (float("nan"), float("nan")))
-            t_tfm_eval = 0.0   # cache hit
+            t_tfm_eval = 0.0
             all_results.append({**base_info, "baseline": "B-greedy-TFM",
                                  "tabpfn_acc": acc_tfm, "ece": ece_tfm,
                                  "time_search_s": t_tfm_search, "time_eval_s": t_tfm_eval,
@@ -545,7 +474,6 @@ def main(
         t_ds = round(time.time() - t0_dataset, 2)
         print(f"  ↳ Dataset total: {t_ds:.1f}s")
 
-    # ── Save ─────────────────────────────────────────────────────────────────
     if not all_results:
         print("\nNo results to save.")
         return
@@ -553,11 +481,9 @@ def main(
     results_df = pd.DataFrame(all_results)
     results_df.to_csv(out_dir / "results.csv", index=False)
 
-    # ── Timing ───────────────────────────────────────────────────────────────
     timing_df = pd.DataFrame(dataset_timing)
     timing_df.to_csv(out_dir / "timing_per_profile.csv", index=False)
 
-    # Level 1 — per dataset total
     timing_per_ds = (
         timing_df.groupby("dataset")[["time_profile_s", "time_tfm_search_s"]]
         .agg(total_s=("time_profile_s", "sum"),
@@ -566,7 +492,6 @@ def main(
     )
     timing_per_ds.to_csv(out_dir / "timing_per_dataset.csv", index=False)
 
-    # Level 2 — per mcar rate (mean across datasets)
     timing_per_rate = (
         timing_df.groupby("mcar_rate")[[
             "time_b0_eval_s", "time_b1_eval_s",
@@ -581,7 +506,6 @@ def main(
     print("\nTiming summary — mean per MCAR rate:")
     print(timing_per_rate.to_string(index=False, float_format="{:.2f}".format))
 
-    # Monotonicity analysis
     print(f"\n{'='*60}")
     print("C4 — Monotonicity of benefit (B-greedy-TFM acc − B1 acc) vs. MCAR rate:")
     pivot = results_df.pivot_table(
@@ -606,7 +530,6 @@ def main(
         print(f"\n  Monotone on {n_monotone}/{len(REPRESENTATIVE_DATASETS)} datasets "
               f"(target: ≥4/5)")
 
-    # LaTeX table
     latex = make_latex_table_c4(results_df)
     (out_dir / "c4_sensitivity.tex").write_text(latex)
 
@@ -614,7 +537,6 @@ def main(
     print(f"Total time: {time.time() - t0_total:.1f}s")
 
 
-# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

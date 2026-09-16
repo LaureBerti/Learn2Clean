@@ -1,46 +1,3 @@
-"""
-experiments/run_c3_calibration.py
-
-C3 — Prior-Aligned Cleaning Calibration Experiment
-====================================================
-Claim: "Prior-aligned cleaning produces lower ECE on TabPFN outputs than
-RF-reward cleaning and standard preprocessing; dirty data degrades TabPFN
-calibration in a recoverable way."
-
-This script also covers the MCAR sensitivity sub-sweep for C4 (all four MCAR
-rates × all baselines) and the error-type breakdown (MCAR / MAR / OUT / DUP).
-
-Design
-------
-* Load all 10 OpenML benchmark datasets.
-* Apply error profiles:
-    MCAR ∈ {0%, 5%, 15%, 30%} on all datasets
-    Plus: MAR 15%, Outlier 10% (k=3), Duplicate 10% (for error-type table)
-* For each (dataset, profile): apply four baselines:
-    B0         — no cleaning (dirty data passed directly to TabPFN)
-    B1         — mean imputation + minmax scaling (standard preprocessing)
-    B-greedy-RF  — best of 112 pipelines scored with MultiObjectiveReward(RF)
-    B-greedy-TFM — best of 112 pipelines scored with TFMAwareReward(TabPFN)
-* Evaluate each baseline with TabPFN v2: accuracy + ECE.
-
-Dependency check
-----------------
-TabPFN v2 must be installed:  pip install tabpfn>=2.0
-
-Outputs
--------
-  outputs/paper_ready/c3_calibration/
-    results.csv                  — (dataset, mcar_rate, baseline, tabpfn_acc, ece)
-    c3_sensitivity_curves.csv    — pivot: mcar_rate × mean_acc/ece across datasets
-    c3_error_type.csv            — (dataset, error_type, baseline, acc, ece)
-    c3_calibration.tex           — LaTeX table for the paper
-
-Usage
------
-  PYTHONPATH=src python experiments/run_c3_calibration.py
-  PYTHONPATH=src python experiments/run_c3_calibration.py --datasets hepatitis diabetes
-  PYTHONPATH=src python experiments/run_c3_calibration.py --output-dir /tmp/c3 --seed 0
-"""
 
 from __future__ import annotations
 
@@ -59,11 +16,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 from sklearn.impute import SimpleImputer
 
-# ---------------------------------------------------------------------------
-# Dependency check
-# ---------------------------------------------------------------------------
 try:
-    import tabpfn as _tabpfn_check  # noqa: F401
+    import tabpfn as _tabpfn_check
     TABPFN_AVAILABLE = True
 except ImportError:
     TABPFN_AVAILABLE = False
@@ -77,9 +31,6 @@ if not TABPFN_AVAILABLE:
     )
     sys.exit("Install tabpfn>=2.0 first")
 
-# ---------------------------------------------------------------------------
-# Local imports
-# ---------------------------------------------------------------------------
 sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
 
 from learn2clean_v3.actions import (
@@ -96,15 +47,10 @@ from learn2clean_v3.rewards import MultiObjectiveReward, TFMAwareReward
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s | %(message)s")
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
 NATURAL_MISSING: frozenset = frozenset({"hepatitis", "diabetes", "adult"})
 
-# MCAR rates for the sensitivity sweep (0% = clean baseline)
 MCAR_RATES: List[float] = [0.0, 0.05, 0.15, 0.30]
 
-# Additional error types for the error-type table
 ERROR_TYPE_PROFILES: List[ErrorProfile] = [
     ErrorProfile("mcar",      0.15, seed=42),
     ErrorProfile("mar",       0.15, seed=42),
@@ -117,8 +63,8 @@ N_BINS_ECE: int = 10
 ACTION_GROUPS: Dict[int, str] = {
     0: "impute",  1: "impute",  2: "impute",
     3: "outlier", 4: "outlier",
-    5: "scale",   6: "scale",   8: "scale",  # three normalisation alternatives
-    7: "dedup",                               # deduplication — once per pipeline
+    5: "scale",   6: "scale",   8: "scale",
+    7: "dedup",
 }
 ACTION_LABELS: Dict[int, str] = {
     0: "impute(mean)",   1: "impute(median)", 2: "impute(knn)",
@@ -128,23 +74,18 @@ ACTION_LABELS: Dict[int, str] = {
 }
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 def build_actions() -> List[DataFrameAction]:
-    # Index order must match ACTION_GROUPS / ACTION_LABELS
-    # 0-2: imputers | 3-4: outlier | 5-6,8: scalers | 7: dedup
     return [
-        ParameterizedImputer(strategy="mean"),           # 0
-        ParameterizedImputer(strategy="median"),          # 1
-        ParameterizedImputer(strategy="knn", n_neighbors=5),  # 2
-        ParameterizedOutlierCleaner(method="iqr",    threshold=1.5),  # 3
-        ParameterizedOutlierCleaner(method="zscore", threshold=3.0),  # 4
-        ParameterizedScaler(method="minmax"),             # 5
-        ParameterizedScaler(method="zscore"),             # 6
-        ParameterizedDeduplicator(keep="first", subset="all"),  # 7
-        ParameterizedScaler(method="quantile"),           # 8
+        ParameterizedImputer(strategy="mean"),
+        ParameterizedImputer(strategy="median"),
+        ParameterizedImputer(strategy="knn", n_neighbors=5),
+        ParameterizedOutlierCleaner(method="iqr",    threshold=1.5),
+        ParameterizedOutlierCleaner(method="zscore", threshold=3.0),
+        ParameterizedScaler(method="minmax"),
+        ParameterizedScaler(method="zscore"),
+        ParameterizedDeduplicator(keep="first", subset="all"),
+        ParameterizedScaler(method="quantile"),
     ]
 
 
@@ -163,16 +104,6 @@ def sample_pipelines(
     max_n: int,
     seed: int = 42,
 ) -> List[Tuple[int, ...]]:
-    """Return a stratified subsample of at most *max_n* valid pipelines.
-
-    Strategy (Option 1):
-      • Always keep the no-op pipeline (empty tuple) — it's the no-cleaning baseline.
-      • Always keep all 1-step pipelines (9 actions) — essential for interpretation.
-      • Fill remaining slots with a random sample from 2-step then 3-step, preserving
-        relative proportions of each length tier.  Fixed seed ensures reproducibility.
-
-    With max_n=30: 1 (no-op) + 9 (1-step) + 20 sampled from {2-step, 3-step} = 30.
-    """
     if max_n <= 0 or max_n >= len(pipelines):
         return pipelines
 
@@ -186,7 +117,6 @@ def sample_pipelines(
         return noop + one_step[:max_n - len(noop)]
 
     rng = np.random.default_rng(seed)
-    # Proportional allocation to 2-step vs 3-step
     total_rest = len(two_step) + len(three_step)
     n2 = int(round(budget * len(two_step) / max(total_rest, 1)))
     n3 = budget - n2
@@ -214,7 +144,6 @@ def apply_pipeline(
     pipeline: Tuple[int, ...],
     actions: List[DataFrameAction],
 ) -> Optional[pd.DataFrame]:
-    """Apply a sequence of actions; returns None on failure."""
     X_out = X.copy()
     for idx in pipeline:
         try:
@@ -226,7 +155,6 @@ def apply_pipeline(
 
 
 def apply_b1_baseline(X: pd.DataFrame) -> pd.DataFrame:
-    """B1 baseline: mean imputation + minmax scaling."""
     numeric_cols = X.select_dtypes(include="number").columns.tolist()
     X_out = X.copy()
     if numeric_cols:
@@ -238,7 +166,6 @@ def apply_b1_baseline(X: pd.DataFrame) -> pd.DataFrame:
 
 
 def compute_ece(y_true: np.ndarray, y_prob: np.ndarray, n_bins: int = 10) -> float:
-    """Expected Calibration Error: Σ |conf − acc| × n_bin / n_total."""
     n_total = len(y_true)
     if n_total == 0:
         return float("nan")
@@ -269,15 +196,12 @@ def evaluate_with_tabpfn(
     y: pd.Series,
     seed: int = 42,
 ) -> Tuple[float, float]:
-    """Fit TabPFN v2 and return (accuracy, ECE)."""
     from tabpfn import TabPFNClassifier
 
     numeric = X_clean.select_dtypes(include="number")
     if numeric.shape[1] == 0:
         return float("nan"), float("nan")
 
-    # Align y to X rows (deduplication may have reduced row count while y retains
-    # the original + injected-duplicate rows)
     if isinstance(y, pd.Series) and len(numeric) < len(y):
         try:
             y = y.loc[numeric.index]
@@ -338,11 +262,6 @@ def build_cleaning_cache(
     actions: List[DataFrameAction],
     pipelines: List[Tuple[int, ...]],
 ) -> Dict[Tuple, Optional[pd.DataFrame]]:
-    """Apply every pipeline to X_dirty ONCE and cache the cleaned DataFrames.
-
-    Option 2 — shared cleaning: both the RF search and TabPFN search iterate
-    over this cache, so each pipeline is applied exactly once instead of twice.
-    """
     cache: Dict[Tuple, Optional[pd.DataFrame]] = {}
     for seq in pipelines:
         cache[seq] = apply_pipeline(X_dirty, y, seq, actions)
@@ -355,7 +274,6 @@ def best_from_cache_rf(
     y: pd.Series,
     reward_fn: MultiObjectiveReward,
 ) -> Tuple[int, ...]:
-    """Select the highest-RF-reward pipeline from the pre-computed cleaning cache."""
     best_score = -np.inf
     best_pipeline: Tuple[int, ...] = ()
     for seq, X_out in cleaning_cache.items():
@@ -376,14 +294,6 @@ def build_tabpfn_cache(
     y: pd.Series,
     seed: int,
 ) -> Dict[Tuple, Tuple[float, float]]:
-    """Evaluate TabPFN on every cached cleaned dataset.
-
-    Option 2 — shared TabPFN results: the TFM greedy search and the final
-    per-baseline TabPFN evaluation both read from this cache, so each
-    cleaned dataset is evaluated by TabPFN exactly once.
-
-    Returns {pipeline_seq: (accuracy, ece)}.
-    """
     tfm_cache: Dict[Tuple, Tuple[float, float]] = {}
     for seq, X_out in cleaning_cache.items():
         if X_out is None:
@@ -400,13 +310,6 @@ def best_from_tfm_cache(
     n0: int,
     tfm_reward: TFMAwareReward,
 ) -> Tuple[int, ...]:
-    """Select the highest-TFMAwareReward pipeline using pre-computed TabPFN scores.
-
-    Computes the TFMAwareReward formula directly (w_acc·acc + w_ret·(n'/n0)^α +
-    w_qual·Q − λ·0) without re-calling TabPFN.  The Wasserstein term is set to 0
-    here to avoid recomputing it; the search still faithfully prefers pipelines with
-    higher TabPFN accuracy and row retention.
-    """
     w_acc  = getattr(tfm_reward, "weight_accuracy",    0.50)
     w_ret  = getattr(tfm_reward, "weight_retention",   0.35)
     w_qual = getattr(tfm_reward, "weight_quality",     0.15)
@@ -432,12 +335,8 @@ def best_from_tfm_cache(
     return best_pipeline
 
 
-# ---------------------------------------------------------------------------
-# LaTeX table
-# ---------------------------------------------------------------------------
 
 def make_latex_table_c3(results_df: pd.DataFrame) -> str:
-    """Build the C3 main calibration table (averaged over datasets, per MCAR rate)."""
     summary = (
         results_df[results_df["error_type"] == "mcar"]
         .groupby(["mcar_rate", "baseline"])[["tabpfn_acc", "ece"]]
@@ -510,9 +409,6 @@ def make_latex_table_c3(results_df: pd.DataFrame) -> str:
     return "\n".join(lines)
 
 
-# ---------------------------------------------------------------------------
-# Core evaluation loop for one (dataset, profile)
-# ---------------------------------------------------------------------------
 
 def evaluate_one_profile(
     ds_name: str,
@@ -526,29 +422,6 @@ def evaluate_one_profile(
     error_type: str,
     mcar_rate: float,
 ) -> List[Dict]:
-    """Run all four baselines on one (dataset, dirty) pair; return result rows.
-
-    Optimisation (Options 1 + 2):
-      Option 1 — reduced pipeline budget: *pipelines* contains at most max_pipelines
-                 entries (see sample_pipelines()), cutting TabPFN calls ~10×.
-      Option 2 — shared cleaning + TabPFN cache:
-                 (a) Each pipeline is applied to X_dirty exactly ONCE via
-                     build_cleaning_cache(); both RF and TFM searches read from
-                     this dict, eliminating the duplicate cleaning pass.
-                 (b) TabPFN is called on each cleaned dataset exactly ONCE via
-                     build_tabpfn_cache(); B-greedy-RF and B-greedy-TFM both
-                     look up their final (acc, ece) from this cache — no extra
-                     TabPFN calls after the search.
-
-    Total TabPFN calls per profile: 2 (B0, B1) + len(pipelines) (shared cache)
-    = 2 + 30 = 32  vs  original 306 → ~10× speedup.
-
-    Each row contains timing columns:
-      time_search_s  — seconds for pipeline selection (0 for B0/B1)
-      time_eval_s    — seconds for the final per-baseline TabPFN lookup (cache hit ≈ 0)
-      n_pipelines    — candidate set size (0 for B0/B1)
-      best_pipeline  — label of the selected pipeline
-    """
     rows: List[Dict] = []
     n0 = len(X_dirty)
     base_info = {
@@ -559,7 +432,6 @@ def evaluate_one_profile(
         "n_cols":       X_dirty.shape[1],
     }
 
-    # B0 — no cleaning (single TabPFN call, cannot be cached further)
     t0 = time.time()
     acc_b0, ece_b0 = evaluate_with_tabpfn(X_dirty, y, seed=seed)
     rows.append({**base_info, "baseline": "B0",
@@ -567,7 +439,6 @@ def evaluate_one_profile(
                  "time_search_s": 0.0, "time_eval_s": round(time.time() - t0, 3),
                  "n_pipelines": 0, "best_pipeline": "no_op"})
 
-    # B1 — mean + minmax (single TabPFN call)
     t0 = time.time()
     X_b1 = apply_b1_baseline(X_dirty)
     acc_b1, ece_b1 = evaluate_with_tabpfn(X_b1, y, seed=seed)
@@ -576,50 +447,40 @@ def evaluate_one_profile(
                  "time_search_s": 0.0, "time_eval_s": round(time.time() - t0, 3),
                  "n_pipelines": 0, "best_pipeline": "impute(mean) → scale(minmax)"})
 
-    # ── Option 2a: build cleaning cache (apply each pipeline ONCE) ────────────
     t_clean = time.time()
     cleaning_cache = build_cleaning_cache(X_dirty, y, actions, pipelines)
     t_clean_total  = round(time.time() - t_clean, 3)
 
-    # ── Option 2b: evaluate TabPFN on all cleaned datasets ONCE ──────────────
     t_tfm_cache = time.time()
     tabpfn_cache = build_tabpfn_cache(cleaning_cache, y, seed)
     t_tfm_cache_total = round(time.time() - t_tfm_cache, 3)
 
-    # ── B-greedy-RF: search uses RF reward on cached cleaned datasets ─────────
     t_rf = time.time()
     best_rf = best_from_cache_rf(cleaning_cache, X_dirty, y, rf_reward)
     t_rf_search = round(time.time() - t_rf, 3)
-    # Final evaluation: read from TabPFN cache (no new call needed)
     acc_rf, ece_rf = tabpfn_cache.get(best_rf, (float("nan"), float("nan")))
     rows.append({**base_info, "baseline": "B-greedy-RF",
                  "tabpfn_acc": acc_rf, "ece": ece_rf,
                  "time_search_s": t_rf_search,
-                 "time_eval_s": 0.0,   # cache hit
+                 "time_eval_s": 0.0,
                  "n_pipelines": len(pipelines), "best_pipeline": pipeline_label(best_rf)})
 
-    # ── B-greedy-TFM: select best using pre-computed TabPFN scores ────────────
     t_tfm = time.time()
     best_tfm = best_from_tfm_cache(cleaning_cache, tabpfn_cache, X_dirty, n0, tfm_reward)
     t_tfm_search = round(time.time() - t_tfm, 3)
-    # Final evaluation: cache hit (TabPFN already called during build_tabpfn_cache)
     acc_tfm, ece_tfm = tabpfn_cache.get(best_tfm, (float("nan"), float("nan")))
     rows.append({**base_info, "baseline": "B-greedy-TFM",
                  "tabpfn_acc": acc_tfm, "ece": ece_tfm,
                  "time_search_s": t_tfm_search,
-                 "time_eval_s": 0.0,   # cache hit
+                 "time_eval_s": 0.0,
                  "n_pipelines": len(pipelines), "best_pipeline": pipeline_label(best_tfm)})
 
-    # Attach shared-cache timings as metadata in the first two result rows
     rows[0]["time_clean_cache_s"] = t_clean_total
     rows[0]["time_tabpfn_cache_s"] = t_tfm_cache_total
 
     return rows
 
 
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
 
 def main(
     dataset_names: Optional[List[str]] = None,
@@ -645,7 +506,7 @@ def main(
 
     all_results: List[Dict] = []
     error_type_results: List[Dict] = []
-    dataset_timing: List[Dict] = []   # one row per (dataset, phase, profile)
+    dataset_timing: List[Dict] = []
     t0_total = time.time()
 
     for ds_name in dataset_names:
@@ -674,7 +535,6 @@ def main(
             eval_metric=spec.eval_metric,
         )
 
-        # ── MCAR sweep ───────────────────────────────────────────────────────
         for rate in MCAR_RATES:
             t0 = time.time()
             if rate == 0.0:
@@ -713,10 +573,8 @@ def main(
                 ),
             })
 
-        # ── Error-type table (MAR / OUT / DUP at fixed rate) ─────────────────
         for prof in ERROR_TYPE_PROFILES:
             if prof.error_type == "mcar":
-                # Already covered above; add to error_type results only
                 profile = ErrorProfile("mcar", 0.15, seed=seed)
                 X_dirty, y_dirty = apply_error_profile(X, y, profile)
             else:
@@ -758,7 +616,6 @@ def main(
         t_ds = round(time.time() - t0_dataset, 2)
         print(f"  ↳ Dataset total: {t_ds:.1f}s")
 
-        # ── Incremental save after each dataset ──────────────────────────────
         if all_results:
             pd.DataFrame(all_results).to_csv(
                 out_dir / "results_partial.csv", index=False
@@ -768,7 +625,6 @@ def main(
                 out_dir / "c3_error_type_partial.csv", index=False
             )
 
-    # ── Save ─────────────────────────────────────────────────────────────────
     if not all_results:
         print("\nNo results to save.")
         return
@@ -779,11 +635,9 @@ def main(
     results_df.to_csv(out_dir / "results.csv", index=False)
     error_df.to_csv(out_dir / "c3_error_type.csv", index=False)
 
-    # ── Timing ───────────────────────────────────────────────────────────────
     timing_df = pd.DataFrame(dataset_timing)
     timing_df.to_csv(out_dir / "timing_per_profile.csv", index=False)
 
-    # Level 1 — per dataset total
     timing_per_ds = (
         timing_df.groupby("dataset")[["time_profile_s", "time_rf_search_s", "time_tfm_search_s"]]
         .sum()
@@ -794,7 +648,6 @@ def main(
     )
     timing_per_ds.to_csv(out_dir / "timing_per_dataset.csv", index=False)
 
-    # Level 2 — per error type (mean across datasets)
     timing_per_etype = (
         timing_df.groupby("error_type")[["time_profile_s", "time_rf_search_s", "time_tfm_search_s"]]
         .mean()
@@ -805,7 +658,6 @@ def main(
     )
     timing_per_etype.to_csv(out_dir / "timing_per_error_type.csv", index=False)
 
-    # Level 3 — per baseline mean eval time (from result rows)
     all_both = pd.concat([results_df, error_df], ignore_index=True)
     timing_per_baseline = (
         all_both.groupby("baseline")[["time_search_s", "time_eval_s"]]
@@ -814,7 +666,6 @@ def main(
     )
     timing_per_baseline.to_csv(out_dir / "timing_per_baseline.csv", index=False)
 
-    # Print timing summary
     print(f"\n{'─'*60}")
     print("Timing summary — per dataset (total seconds):")
     print(timing_per_ds.to_string(index=False, float_format="{:.1f}".format))
@@ -823,7 +674,6 @@ def main(
     print("\nTiming summary — mean per baseline:")
     print(timing_per_baseline.to_string(index=False, float_format="{:.2f}".format))
 
-    # Sensitivity curves: pivot mcar_rate × mean metric across datasets
     sens_df = (
         results_df[results_df["error_type"] == "mcar"]
         .groupby(["mcar_rate", "baseline"])[["tabpfn_acc", "ece"]]
@@ -832,11 +682,9 @@ def main(
     )
     sens_df.to_csv(out_dir / "c3_sensitivity_curves.csv", index=False)
 
-    # LaTeX
     latex = make_latex_table_c3(results_df)
     (out_dir / "c3_calibration.tex").write_text(latex)
 
-    # Print summary
     print(f"\n{'='*60}")
     print("C3 — Mean metrics across datasets by baseline (MCAR 15%):")
     mcar15 = results_df[
@@ -854,7 +702,6 @@ def main(
     print(f"Total time: {time.time() - t0_total:.1f}s")
 
 
-# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

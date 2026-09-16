@@ -1,15 +1,3 @@
-"""
-experiments/run_c4_8seed.py
-
-8-seed driver for C4 (error sensitivity) — produces a mean +/- 95% CI advantage
-band for Figure 5. Thin wrapper around
-run_c4_error_sensitivity.main: runs the MCAR sweep once per seed, tags rows with
-the seed, and merges into results_per_seed.csv.
-
-Usage:
-  PYTHONPATH=src:experiments python experiments/run_c4_8seed.py \
-      --seeds 42 1 2 3 4 5 6 7 --output-dir outputs/paper_ready/c4_8seed
-"""
 from __future__ import annotations
 import argparse, time
 from pathlib import Path

@@ -1,25 +1,3 @@
-"""Synthetic error injection for controlled benchmark experiments.
-
-Implements the four error types defined in contributions.md:
-  - MCAR  : Missing Completely At Random
-  - MAR   : Missing At Random (conditioned on another column)
-  - OUT   : Outliers (replace cell with N(μ, k·σ))
-  - DUP   : Duplicate rows
-
-Design goals
-------------
-* All functions are pure: they return new DataFrames / Series; originals unchanged.
-* Reproducible: every function accepts a ``seed`` parameter.
-* ``apply_error_profile()`` is the single entry-point for experiment runners.
-* ``generate_all_profiles()`` produces the full factorial grid used in paper experiments.
-
-Usage::
-
-    from learn2clean_v3.data.error_injection import apply_error_profile, ErrorProfile
-
-    profile = ErrorProfile(error_type="mcar", rate=0.15)
-    X_dirty, y_dirty = apply_error_profile(X, y, profile)
-"""
 
 from __future__ import annotations
 
@@ -32,29 +10,13 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# ErrorProfile
-# ---------------------------------------------------------------------------
 
 @dataclass
 class ErrorProfile:
-    """Specification for a single synthetic error injection run.
 
-    Parameters
-    ----------
-    error_type:
-        One of ``"mcar"``, ``"mar"``, ``"outlier"``, ``"duplicate"``, ``"none"``.
-    rate:
-        Fraction of rows / cells affected (interpretation depends on type).
-    k:
-        Multiplier for outlier magnitude: replacement = N(μ, k·σ). Default 3.0.
-    seed:
-        Random seed for reproducibility. Default 42.
-    """
-
-    error_type: str          # "mcar" | "mar" | "outlier" | "duplicate" | "none"
-    rate: float              # fraction of cells/rows affected
-    k: float = 3.0           # outlier severity
+    error_type: str
+    rate: float
+    k: float = 3.0
     seed: int = 42
 
     def __post_init__(self) -> None:
@@ -68,38 +30,18 @@ class ErrorProfile:
 
     @property
     def tag(self) -> str:
-        """Short string tag for filenames, e.g. 'mcar_p015' or 'out_k3_p010'."""
         rate_str = f"p{int(self.rate * 100):03d}"
         if self.error_type == "outlier":
             return f"out_k{int(self.k)}_{rate_str}"
         return f"{self.error_type}_{rate_str}"
 
 
-# ---------------------------------------------------------------------------
-# MCAR — Missing Completely At Random
-# ---------------------------------------------------------------------------
 
 def inject_missing_mcar(
     X: pd.DataFrame,
     rate: float,
     seed: int = 42,
 ) -> pd.DataFrame:
-    """Replace a random fraction *rate* of cells in numeric columns with NaN.
-
-    Parameters
-    ----------
-    X:
-        Feature matrix. Only float/int columns are affected; object/category columns
-        are left unchanged (they may already encode missing values as a category).
-    rate:
-        Fraction of cells to corrupt in eligible columns.
-    seed:
-        Random seed.
-
-    Returns
-    -------
-    pd.DataFrame with the same shape as X.
-    """
     if rate == 0.0:
         return X.copy()
 
@@ -124,9 +66,6 @@ def inject_missing_mcar(
     return X_out
 
 
-# ---------------------------------------------------------------------------
-# MAR — Missing At Random (conditioned on anchor column)
-# ---------------------------------------------------------------------------
 
 def inject_missing_mar(
     X: pd.DataFrame,
@@ -134,27 +73,6 @@ def inject_missing_mar(
     seed: int = 42,
     anchor_col: Optional[str] = None,
 ) -> pd.DataFrame:
-    """Introduce MAR missingness: NaN in target column when anchor column > Q75.
-
-    Mimics a realistic mechanism where one sensor/feature fails when another is high.
-
-    Parameters
-    ----------
-    X:
-        Feature matrix.
-    rate:
-        Approximate fraction of rows that will gain a missing value in the
-        highest-correlated column pair. Actual rate may differ slightly.
-    seed:
-        Random seed.
-    anchor_col:
-        Column used as the MAR trigger. If None, the pair with the highest
-        absolute Pearson correlation is selected automatically.
-
-    Returns
-    -------
-    pd.DataFrame with NaN values in the target column.
-    """
     if rate == 0.0:
         return X.copy()
 
@@ -166,10 +84,8 @@ def inject_missing_mar(
         logger.warning("inject_missing_mar: need ≥2 numeric columns; falling back to MCAR.")
         return inject_missing_mcar(X_out, rate, seed)
 
-    # Pick anchor column (highest-variance numeric column, or user-specified)
     if anchor_col is None:
         corr = X_out[num_cols].corr().abs()
-        # Zero the diagonal on a writable copy to exclude self-correlations
         corr_arr = corr.to_numpy().copy()
         np.fill_diagonal(corr_arr, 0)
         corr = pd.DataFrame(corr_arr, index=corr.index, columns=corr.columns)
@@ -177,12 +93,10 @@ def inject_missing_mar(
     else:
         if anchor_col not in num_cols:
             raise ValueError(f"anchor_col {anchor_col!r} not in numeric columns.")
-        # Target: highest corr with anchor
         corr = X_out[num_cols].corrwith(X_out[anchor_col]).abs()
-        corr[anchor_col] = -1  # exclude self
+        corr[anchor_col] = -1
         target_col = corr.idxmax()
 
-    # Condition: anchor > Q75, then randomly set target to NaN (controlled by rate)
     q75 = X_out[anchor_col].quantile(0.75)
     eligible_mask = X_out[anchor_col] > q75
     eligible_idx = X_out.index[eligible_mask].tolist()
@@ -200,9 +114,6 @@ def inject_missing_mar(
     return X_out
 
 
-# ---------------------------------------------------------------------------
-# Outliers
-# ---------------------------------------------------------------------------
 
 def inject_outliers(
     X: pd.DataFrame,
@@ -210,25 +121,6 @@ def inject_outliers(
     k: float = 3.0,
     seed: int = 42,
 ) -> pd.DataFrame:
-    """Replace a fraction *rate* of cells in numeric columns with outlier values.
-
-    Each replacement is drawn from N(μ_col ± k·σ_col), where the sign is random.
-
-    Parameters
-    ----------
-    X:
-        Feature matrix.
-    rate:
-        Fraction of cells in numeric columns to replace.
-    k:
-        Outlier severity. Replacement = μ ± k·σ + ε where ε ~ N(0, σ/10).
-    seed:
-        Random seed.
-
-    Returns
-    -------
-    pd.DataFrame with the same shape as X; non-numeric columns untouched.
-    """
     if rate == 0.0:
         return X.copy()
 
@@ -239,8 +131,6 @@ def inject_outliers(
         logger.warning("inject_outliers: no numeric columns found; returning unchanged.")
         return X_out
 
-    # Upcast all numeric columns to float64 so injected float outlier values can be stored.
-    # float32 columns also need upcasting — pandas rejects writing a float64 scalar into them.
     for col in num_cols:
         if X_out[col].dtype != np.float64:
             X_out[col] = X_out[col].astype(np.float64)
@@ -262,7 +152,6 @@ def inject_outliers(
         mu, sigma = col_stats[col]
         if sigma == 0 or np.isnan(sigma):
             continue
-        # Outlier value: draw from N(μ ± k·σ, σ/10) for natural spread
         noise = rng.normal(0, sigma / 10)
         X_out.iloc[r, X_out.columns.get_loc(col)] = mu + sign * k * sigma + noise
 
@@ -270,9 +159,6 @@ def inject_outliers(
     return X_out
 
 
-# ---------------------------------------------------------------------------
-# Duplicates
-# ---------------------------------------------------------------------------
 
 def inject_duplicates(
     X: pd.DataFrame,
@@ -280,23 +166,6 @@ def inject_duplicates(
     rate: float,
     seed: int = 42,
 ) -> Tuple[pd.DataFrame, pd.Series]:
-    """Append exact duplicate rows to the dataset.
-
-    Parameters
-    ----------
-    X:
-        Feature matrix.
-    y:
-        Target series.
-    rate:
-        Fraction of *original* rows to duplicate (appended to end).
-    seed:
-        Random seed.
-
-    Returns
-    -------
-    Tuple (X_with_dups, y_with_dups) — larger DataFrames; indices reset.
-    """
     if rate == 0.0:
         return X.copy(), y.copy()
 
@@ -311,32 +180,12 @@ def inject_duplicates(
     return X_dup, y_dup
 
 
-# ---------------------------------------------------------------------------
-# Dispatch
-# ---------------------------------------------------------------------------
 
 def apply_error_profile(
     X: pd.DataFrame,
     y: pd.Series,
     profile: ErrorProfile,
 ) -> Tuple[pd.DataFrame, pd.Series]:
-    """Apply a single ErrorProfile to (X, y) and return the dirty copies.
-
-    This is the primary entry-point for experiment runners.
-
-    Parameters
-    ----------
-    X:
-        Clean feature matrix.
-    y:
-        Clean target series.
-    profile:
-        Which error type and rate to inject.
-
-    Returns
-    -------
-    (X_dirty, y_dirty) — new DataFrames; X and y are not modified.
-    """
     if profile.error_type == "none" or profile.rate == 0.0:
         return X.copy(), y.copy()
 
@@ -355,40 +204,24 @@ def apply_error_profile(
     raise ValueError(f"Unknown error_type: {profile.error_type!r}")
 
 
-# ---------------------------------------------------------------------------
-# Grid helpers for experiments
-# ---------------------------------------------------------------------------
 
 def generate_all_profiles(
     include_none: bool = True,
 ) -> List[ErrorProfile]:
-    """Return the full factorial set of ErrorProfiles used in paper experiments.
-
-    Grid (from contributions.md):
-      - MCAR:      rate ∈ {0.05, 0.10, 0.15, 0.20, 0.30}
-      - MAR:       rate = 0.15
-      - Outliers:  k ∈ {3, 5} × rate ∈ {0.05, 0.10}
-      - Duplicates: rate ∈ {0.05, 0.10, 0.20}
-      - (none):    rate = 0.0  — baseline clean run (optional)
-    """
     profiles: List[ErrorProfile] = []
 
     if include_none:
         profiles.append(ErrorProfile("none", 0.0))
 
-    # MCAR sweep (primary experiment axis)
     for rate in [0.05, 0.10, 0.15, 0.20, 0.30]:
         profiles.append(ErrorProfile("mcar", rate))
 
-    # MAR (fixed rate)
     profiles.append(ErrorProfile("mar", 0.15))
 
-    # Outliers
     for k in [3.0, 5.0]:
         for rate in [0.05, 0.10]:
             profiles.append(ErrorProfile("outlier", rate, k=k))
 
-    # Duplicates
     for rate in [0.05, 0.10, 0.20]:
         profiles.append(ErrorProfile("duplicate", rate))
 

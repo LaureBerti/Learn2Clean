@@ -1,32 +1,3 @@
-"""
-experiments/run_prior_distance.py
-
-Prototype + sanity-check FOUR ways to measure "distance to the TabPFN prior". For a set
-of held-out protocol cleaning pipelines on each dataset we compute each prior-distance estimator on the
-CLEANED training context, plus TabPFN held-out accuracy/ECE on an inner-val split, then check:
-
-  (a) NON-DEGENERACY — does the estimator actually vary across pipelines? (the dirty-referenced
-      drift term of the submission collapsed to no-op because it didn't.)
-  (b) CORRELATION — does a smaller prior-distance go with higher TabPFN accuracy / lower ECE?
-      (Spearman across pipelines, per dataset + pooled.) A faithful prior term should show
-      distance↓ ⇒ acc↑ (negative ρ) and distance↓ ⇒ ECE↓ (positive ρ for C2ST/W1/MMD/NLL).
-
-Estimators
-  M1 model_nll  : TabPFN held-out negative log predictive density (model-internal; most faithful).
-  M2 mmd        : RBF-MMD between standardized cleaned features and a Gaussian-prior PROXY.
-  M3 marg_w1    : mean per-feature Wasserstein-1 to N(0,1) after standardization (marginal-only).
-  M4 c2st_auc   : classifier two-sample AUC, cleaned features vs Gaussian-prior proxy (0.5=close).
-
-NOTE on the proxy: TabPFN's true prior is a generator over SCM datasets. Lacking the generator in
-the inference package, M2/M3/M4 use a STANDARD-NORMAL proxy of TabPFN's *normalized-feature* prior
-(it normalizes + power/quantile-transforms inputs, so its expected marginal is ~Gaussian). This is
-a first-order approximation; a fuller version samples TabPFN's actual SCM prior. M1 needs no proxy.
-
-Leak-safe: everything is computed within the training portion; no sacred test is used here.
-
-Usage:  PYTHONPATH=src:experiments python experiments/run_prior_distance.py \
-            --datasets hepatitis ionosphere diabetes blood_transfusion --seeds 42 1 2
-"""
 from __future__ import annotations
 import argparse, itertools, sys
 from pathlib import Path
@@ -41,14 +12,12 @@ from sklearn.metrics.pairwise import rbf_kernel
 ROOT = Path(__file__).parents[1]
 sys.path.insert(0, str(ROOT / "src")); sys.path.insert(0, str(ROOT / "experiments"))
 import run_c2_tfm_reward_nested as G
-import run_saga_richops as R   # reuse apply_pipeline (all held-out protocol operators)
+import run_saga_richops as R
 
-REF = np.random.default_rng(0).standard_normal(20000)  # fixed N(0,1) reference for M3
+REF = np.random.default_rng(0).standard_normal(20000)
 
 
 def candidate_pipes():
-    """~36 pipelines spanning impute × transform × outlier × scale — chosen so the DISTRIBUTION
-    changes a lot (transforms Gaussianize; winsor caps tails) → exercises non-degeneracy (a)."""
     imp = ["mean", "median", "knn"]
     trans = [None, "yeojohnson", "quantile"]
     otl = [None, "winsor"]
@@ -85,7 +54,6 @@ def m_c2st(Z, seed):
 
 
 def m_model(tr, ytr2, val, yval, seed):
-    """Return (nll, acc, f1, ece) from TabPFN fit on cleaned train, eval cleaned inner-val."""
     from sklearn.metrics import f1_score
     yp, yprob = G._tabpfn_fit_predict(tr.values, ytr2.values, val.values, seed)
     classes = list(np.unique(ytr2.values)); idx = {c: i for i, c in enumerate(classes)}
@@ -157,14 +125,11 @@ def main(datasets, seeds, output_dir):
             print(f"  {ds} s{seed}: {len(allrows)} rows so far", flush=True)
     df = pd.DataFrame(allrows)
     measures = ["M1_nll", "M2_mmd", "M3_marg_w1", "M4_c2st"]
-    # (a) non-degeneracy: coefficient of variation across pipelines, per dataset, averaged
     print("\n=== (a) NON-DEGENERACY: spread across pipelines (mean CV over datasets) ===")
     for m in measures:
         cv = df.groupby(["dataset", "seed"])[m].apply(lambda s: s.std() / (abs(s.mean()) + 1e-9)).mean()
         rng = df.groupby(["dataset", "seed"])[m].apply(lambda s: s.max() - s.min()).mean()
         print(f"  {m:12}: mean CV={cv:.3f}  mean range={rng:.4f}  {'NON-degenerate' if cv>0.05 else 'flat?'}")
-    # (b) correlation with acc / F1 / ece (Spearman across pipelines), pooled within (dataset,seed).
-    # Ensembles use within-group z-scores summed (all measures: higher = farther from prior).
     print("\n=== (b) CORRELATION  ρ(score, acc) / ρ(score, F1) / ρ(score, ece)  — pooled ===")
     def zsum(g, cols):
         return sum((g[c] - g[c].mean()) / (g[c].std(ddof=0) + 1e-9) for c in cols)

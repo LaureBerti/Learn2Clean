@@ -1,21 +1,3 @@
-"""
-OfflineRLWrapper — V3 improvement #7.
-
-Pre-computes (observation, action, reward, next_obs, done) transitions by
-systematically exploring action sequences.  The resulting buffer can be used
-to train an offline DQN without running expensive reward evaluations at
-agent decision time.
-
-Strategy
---------
-1. Sample random action sequences of length 1 … max_seq_len.
-2. Execute each sequence from the initial state, recording transitions.
-3. Store everything in a SB3-compatible ReplayBuffer.
-4. Train SB3 DQN on the buffer using ``learning_starts=0``.
-
-This is especially useful when each reward() call re-runs cross-validated
-ML model training (can take seconds per step).
-"""
 
 from __future__ import annotations
 
@@ -32,18 +14,6 @@ logger = logging.getLogger(__name__)
 
 
 class OfflineRLWrapper:
-    """
-    Parameters
-    ----------
-    env : SequentialCleaningEnvV3
-        The environment to explore.
-    max_sequences : int
-        Number of random action sequences to generate.
-    max_seq_len : int
-        Maximum sequence length (caps at env.max_steps).
-    seed : int
-        Random seed for reproducibility.
-    """
 
     def __init__(
         self,
@@ -58,13 +28,8 @@ class OfflineRLWrapper:
         self._seed = seed
         self._buffer: List[Transition] = []
 
-    # ------------------------------------------------------------------
 
     def build_buffer(self) -> List[Transition]:
-        """
-        Explore the action space and collect transitions.
-        Returns the list of Transition objects.
-        """
         rng = random.Random(self._seed)
         n_actions = self._env.action_space.n
         self._buffer = []
@@ -109,7 +74,6 @@ class OfflineRLWrapper:
         logger.info("Buffer ready: %d transitions collected.", len(self._buffer))
         return self._buffer
 
-    # ------------------------------------------------------------------
 
     def train_offline_dqn(
         self,
@@ -118,12 +82,6 @@ class OfflineRLWrapper:
         batch_size: int = 64,
         verbose: int = 1,
     ):
-        """
-        Train SB3 DQN from the pre-computed buffer.
-
-        Returns the trained SB3 DQN model.
-        Requires stable-baselines3 >= 2.3.
-        """
         try:
             from stable_baselines3 import DQN
             from stable_baselines3.common.buffers import ReplayBuffer as SB3Buffer
@@ -133,11 +91,9 @@ class OfflineRLWrapper:
         if not self._buffer:
             raise RuntimeError("Buffer is empty — call build_buffer() first.")
 
-        # Wrap env for SB3
         from stable_baselines3.common.vec_env import DummyVecEnv
         vec_env = DummyVecEnv([lambda: self._env])
 
-        # Build model with a large replay buffer
         model = DQN(
             "MlpPolicy",
             vec_env,
@@ -149,7 +105,6 @@ class OfflineRLWrapper:
             seed=self._seed,
         )
 
-        # Manually fill the SB3 replay buffer from our transitions
         obs_dim = self._buffer[0].obs.shape[0]
         logger.info("Filling SB3 replay buffer with %d transitions...", len(self._buffer))
         for t in self._buffer:
@@ -166,7 +121,6 @@ class OfflineRLWrapper:
         model.learn(total_timesteps=total_timesteps, reset_num_timesteps=False)
         return model
 
-    # ------------------------------------------------------------------
 
     @property
     def buffer(self) -> List[Transition]:

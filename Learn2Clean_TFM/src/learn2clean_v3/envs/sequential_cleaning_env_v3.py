@@ -1,15 +1,3 @@
-"""
-SequentialCleaningEnvV3 — improved Gymnasium environment.
-
-V3 improvements over V2
------------------------
-1. DataQualityObserver wired in by default (richer state).
-2. ExplainableReward integration — action name is passed before each step.
-3. Pandera schema validation after every action (optional).
-4. ParameterizedAction support — env can optionally pass param dicts.
-5. Configurable invalid-action penalty.
-6. ``render()`` shows per-objective reward breakdown when MultiObjectiveReward is used.
-"""
 
 from __future__ import annotations
 
@@ -34,28 +22,6 @@ logger = logging.getLogger(__name__)
 
 
 class SequentialCleaningEnvV3(gym.Env):
-    """
-    Parameters
-    ----------
-    X : Features
-        Initial DataFrame (will be copied, never mutated).
-    y : OptionalTarget
-        Labels (may be None for unsupervised tasks).
-    actions : list[DataFrameAction]
-        Ordered list of available cleaning actions.
-    reward_fn : BaseReward | None
-        Reward function.  Defaults to CompletenessRetentionReward.
-    observer : BaseObserver | None
-        State observer.  Defaults to DataQualityObserver.
-    max_steps : int
-        Episode length cap.
-    invalid_action_penalty : float
-        Reward given when an action raises an exception.
-    pandera_schema : pa.DataFrameSchema | None
-        Global schema applied after every action.
-    allow_repeated_actions : bool
-        If False, re-applying the same action in an episode gives the penalty.
-    """
 
     metadata = {"render_modes": ["ansi"]}
 
@@ -86,24 +52,18 @@ class SequentialCleaningEnvV3(gym.Env):
         self._schema = pandera_schema
         self._allow_repeated = allow_repeated_actions
 
-        # Runtime state
         self._current_X: Features = X.copy()
         self._current_y: OptionalTarget = copy.deepcopy(y)
         self._action_history: ActionHistory = []
         self._step_count: int = 0
 
-        # Set reference distribution in observer once
         if isinstance(self._observer, DataQualityObserver):
             self._observer.set_reference(self._X_orig)
 
-        # Gymnasium spaces
         n = len(self._actions)
         self.action_space = gym.spaces.Discrete(n)
         self.observation_space = self._observer.observation_space(n)
 
-    # ------------------------------------------------------------------
-    # Gymnasium API
-    # ------------------------------------------------------------------
 
     def reset(
         self,
@@ -123,7 +83,6 @@ class SequentialCleaningEnvV3(gym.Env):
 
         self._reward_fn.reset(self._current_X, self._current_y)
 
-        # Re-register reference distribution
         if isinstance(self._observer, DataQualityObserver):
             self._observer.set_reference(self._X_orig)
 
@@ -136,22 +95,18 @@ class SequentialCleaningEnvV3(gym.Env):
         action = self._actions[action_idx]
         info: Dict[str, Any] = {"action": action.name, "step": self._step_count}
 
-        # Repeated-action guard
         if not self._allow_repeated and action_idx in self._action_history:
             self._step_count += 1
             obs = self._get_obs()
             terminated = self._step_count >= self._max_steps
             return obs, self._penalty, terminated, False, {**info, "reason": "repeated_action"}
 
-        # Apply action
         try:
-            # Inform ExplainableReward of upcoming action name
             if isinstance(self._reward_fn, ExplainableReward):
                 self._reward_fn.set_action_name(action.name)
 
             new_X = action(self._current_X, self._current_y)
 
-            # Global pandera schema guard
             if self._schema is not None:
                 try:
                     self._schema.validate(new_X, lazy=True)
@@ -159,8 +114,6 @@ class SequentialCleaningEnvV3(gym.Env):
                     raise DataValidationError(str(exc)) from exc
 
             self._current_X = new_X
-            # Sync y when row-dropping actions (e.g. outlier removal) shrink X.
-            # Requires actions to preserve the original index (no reset_index).
             if (
                 self._current_y is not None
                 and hasattr(self._current_y, "loc")
@@ -172,7 +125,6 @@ class SequentialCleaningEnvV3(gym.Env):
 
             reward = self._reward_fn(self._current_X, self._current_y)
 
-            # Attach reward components if available
             if hasattr(self._reward_fn, "last_components") and self._reward_fn.last_components:
                 info["components"] = self._reward_fn.last_components
 
@@ -213,9 +165,6 @@ class SequentialCleaningEnvV3(gym.Env):
         print(output)
         return output
 
-    # ------------------------------------------------------------------
-    # Properties
-    # ------------------------------------------------------------------
 
     @property
     def current_X(self) -> Features:
@@ -233,9 +182,6 @@ class SequentialCleaningEnvV3(gym.Env):
     def action_names(self) -> List[str]:
         return [a.name for a in self._actions]
 
-    # ------------------------------------------------------------------
-    # Internal
-    # ------------------------------------------------------------------
 
     def _get_obs(self) -> np.ndarray:
         return self._observer.observe(

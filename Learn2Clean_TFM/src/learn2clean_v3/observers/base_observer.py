@@ -1,4 +1,3 @@
-"""Abstract observer interface."""
 
 from __future__ import annotations
 
@@ -11,11 +10,10 @@ from learn2clean_v3.types import ActionHistory, Features, ObservationVector, Opt
 
 
 class BaseObserver(ABC):
-    """Strategy interface for converting env state → agent observation."""
 
     @abstractmethod
     def observation_space(self, n_actions: int) -> gym.Space:
-        """Return the Gymnasium observation space."""
+        pass
 
     @abstractmethod
     def observe(
@@ -25,4 +23,4 @@ class BaseObserver(ABC):
         action_history: ActionHistory,
         n_actions: int,
     ) -> ObservationVector:
-        """Convert current state to a flat numpy observation vector."""
+        pass

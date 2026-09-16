@@ -1,39 +1,3 @@
-"""
-experiments/run_c5_taskeval.py
-
-C5 (TASK-LEVEL) — Parameterized vs. discrete action space, measured on the
-DOWNSTREAM TabPFN v2 test metric under the held-out (nested) protocol.
-
-Motivation
-----------
-The C5 ablation (run_c5_param_ablation.py) reports the *reward-level*
-MultiObjectiveReward delta (+0.0007); this script reports the corresponding
-*task-level* number on the downstream TabPFN test metric.
-It reuses the nested harness from run_c2_tfm_reward_nested.py
-(outer 20% test held out; best pipeline selected on the training portion by
-MultiObjectiveReward with an RF evaluator; final accuracy/ECE/F1 from TabPFN v2 on
-the untouched outer test) and runs it for TWO action pools:
-
-  discrete  — 7 actions, fixed default sub-parameters (KNN k=5, IQR t=1.5, z t=3.0)
-  param     — 17 actions, expanded sub-parameters:
-                  KNN k ∈ {3,5,7,10}; IQR t ∈ {1.0,1.5,2.0,2.5,3.0};
-                  z-score t ∈ {2.0,2.5,3.0,3.5}; + mean/median/minmax/zscore-scale
-
-The action-space is the ONLY thing that differs; the reward, protocol, seeds and
-datasets are identical. We therefore read Δ(param − discrete) on TabPFN v2 test
-accuracy as the task-level effect of parameterization.
-
-Only the RF-reward selection path of run_one is used (that is the C5 selection
-criterion); TabPFN runs on <=512-row contexts and only the 2 best pipelines per
-(dataset, seed, mode) are TabPFN-evaluated.
-
-Usage
------
-  PYTHONPATH=src:experiments python experiments/run_c5_taskeval.py \
-      --seeds 42 1 2 3 4 5 6 7 --output-dir outputs/paper_ready/c5_taskeval
-  PYTHONPATH=src:experiments python experiments/run_c5_taskeval.py \
-      --datasets hepatitis ionosphere --seeds 42            # smoke test
-"""
 from __future__ import annotations
 
 import argparse
@@ -46,7 +10,6 @@ import numpy as np
 import pandas as pd
 from scipy.stats import wilcoxon
 
-# Reuse the proven nested harness verbatim.
 import run_c2_tfm_reward_nested as C2
 from learn2clean_v3.actions import (
     ParameterizedImputer,
@@ -54,9 +17,6 @@ from learn2clean_v3.actions import (
     ParameterizedScaler,
 )
 
-# --------------------------------------------------------------------------- #
-# Action pools (discrete = C2 default; param = expanded sub-parameters)
-# --------------------------------------------------------------------------- #
 def build_discrete() -> Tuple[list, Dict[int, str], Dict[int, str]]:
     actions = [
         ParameterizedImputer(strategy="mean"),
@@ -94,11 +54,6 @@ def build_param() -> Tuple[list, Dict[int, str], Dict[int, str]]:
     return actions, labels, groups
 
 
-# --------------------------------------------------------------------------- #
-# k-aware test preparation (mirrors C2.prepare_test_like_train, but reads the
-# KNN k and outlier/scaler variant from the *current* label map).  Only impute
-# and scale touch the test features; outlier variants are train-context only.
-# --------------------------------------------------------------------------- #
 from sklearn.impute import KNNImputer, SimpleImputer
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
@@ -128,7 +83,6 @@ def make_prepare_test(labels: Dict[int, str]):
                 scaler.fit(sel.values)
                 sel = pd.DataFrame(scaler.transform(sel.values), columns=shared, index=sel.index)
                 test = pd.DataFrame(scaler.transform(test.values), columns=shared, index=test.index)
-            # outlier(*) → row removal: training-context only, skip on test
         return test
     return prepare_test_like_train
 
@@ -136,7 +90,6 @@ def make_prepare_test(labels: Dict[int, str]):
 def run_mode(mode: str, ds_names: List[str], seeds: Tuple[int, ...],
              exhaustive: bool, max_pipelines: int) -> List[Dict]:
     actions, labels, groups = (build_discrete() if mode == "discrete" else build_param())
-    # Swap the module globals that run_one / enumerate / label / test-prep consult.
     C2.ACTION_LABELS = labels
     C2.ACTION_GROUPS = groups
     C2.prepare_test_like_train = make_prepare_test(labels)
@@ -151,7 +104,6 @@ def run_mode(mode: str, ds_names: List[str], seeds: Tuple[int, ...],
             r = C2.run_one(ds, seed, pipelines, actions)
             if r is None:
                 continue
-            # Keep only the RF-reward-selected (= C5 criterion) task-level metrics.
             rows.append({"dataset": ds, "seed": seed, "mode": mode,
                          "acc": r["rf_acc"], "ece": r["rf_ece"], "f1": r["rf_f1"],
                          "pipeline": r["rf_pipeline"]})
@@ -185,7 +137,6 @@ def main() -> None:
         print("No results."); return
     df.to_csv(out_dir / "results_per_seed.csv", index=False)
 
-    # Per-dataset mean test accuracy, then Δ(param − discrete)
     piv = df.groupby(["dataset", "mode"]).acc.mean().unstack("mode")
     piv["delta"] = piv.get("param") - piv.get("discrete")
     piv.to_csv(out_dir / "results_aggregated.csv")

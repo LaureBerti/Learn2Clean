@@ -1,6 +1,3 @@
-"""Merge the F1-selection RICH shards (saga_richops_a/_b/_rc1/_rc2/_rc3) → full 13-ds 8-seed
-multi-metric table. Report R7-vs-R3 under acc-selection (on acc) and F1-selection (on macro-F1),
-plus whether F1-selection raises test-F1 over acc-selection — pooled, with Wilcoxon."""
 from __future__ import annotations
 from pathlib import Path
 import numpy as np, pandas as pd
@@ -41,7 +38,6 @@ def main():
         g = agg[f"rich_{rw}f1_f1"] - agg[f"rich_{rw}acc_f1"]
         print(f"  {rw}: F1-sel − ACC-sel test-F1 = {g.mean():+.4f}, helps {int((g>0).sum())}/{len(agg)} ds, p={wil(g):.3f}")
 
-    # spotlight the imbalanced datasets
     imb = [d for d in ["blood_transfusion", "adult", "bank_marketing", "AnimalShelter", "hepatitis"] if d in agg.index]
     cols = ["rich_r3f1_f1", "rich_r7f1_f1", "rich_f1_delta"]
     print("\n=== imbalanced datasets, F1-selection (R3-F1 vs R7-F1) ===")

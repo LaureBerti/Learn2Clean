@@ -1,25 +1,3 @@
-"""
-experiments/run_systemds_saga.py
-
-REAL SAGA-family baseline: run Apache SystemDS `topk_cleaning` (the SAGA/SAGA++ algorithm,
-Boehm's group's own implementation) on OUR datasets, held-out protocol, and read off its cleaned vs
-dirty downstream accuracy (multiLogReg — SAGA's own evaluator). This upgrades "below SAGA's
-*published* numbers" to "below SAGA *we ran ourselves* on the same data/split".
-
-Approach (per the SystemDS Python/DML research): `pip install systemds` bundles the engine
-jars; we invoke a DML driver via `java -cp <bundled jars> org.apache.sysds.api.DMLScript`.
-The driver reads dirty CSV + a 3-row meta frame + the static primitives/param libraries,
-calls `topk_cleaning(cv=TRUE, evaluationFunc="evalClassification")`, and writes the best
-pipeline's score (cleaned acc) and the dirtyScore (no-clean acc).
-
-This is a best-effort attempt — known failure modes: JDK major mismatch, meta-frame shape,
-the eval callback signature, and small-data CV folds missing a class. Failures are recorded
-honestly per dataset, not hidden.
-
-Usage
------
-  PYTHONPATH=src python experiments/run_systemds_saga.py --datasets EEG Titanic hepatitis ionosphere
-"""
 from __future__ import annotations
 import argparse, glob, os, subprocess, sys, time
 from pathlib import Path
@@ -50,10 +28,6 @@ frequencyEncodeApply,frequencyEncode,0,1,0,0,0,1,,,,,,,,,,,,,,,,
 underSamplingApply,underSampling,1,0,0,1,1,0,1,,,,FP,,0.1,1,,,,,,,,
 pcaApply,pca,1,0,0,0,0,0,5,,,,INT,,2,10,,,,,,,,
 """
-# Driver mirrors SystemDS's own topkcleaningClassificationTest.dml: the evaluationFunc MUST
-# return TWO matrices (output, error) with output=cbind(accuracy, evalFunHp) — a single-return
-# eval (our first attempt) fails topk_cleaning's compile-time inlining, leaving the outputs
-# unbound ("Undefined Variable scores"). Signature confirmed against scripts/builtin/topk_cleaning.dml.
 DRIVER = r'''
 F = read($dirtyData, data_type="frame", format="csv", header=TRUE,
          naStrings=["NA","null","NaN","","?"," ","nan"], sep=",");
@@ -116,8 +90,6 @@ def mcar(X, rate, seed):
 
 
 def find_jars(py) -> str:
-    """Classpath = ALL jars under the installed systemds package (engine jar at the package
-    root + dependency jars in lib/), joined with ':'. Guarantees DMLScript is on the path."""
     try:
         import systemds
         base = Path(systemds.__file__).parent
@@ -137,20 +109,11 @@ def run_one(name, seed, workdir, jars) -> dict:
     F = Xd.copy(); F["__label__"] = y.values
     wd = Path(workdir) / f"{name}_{seed}"; wd.mkdir(parents=True, exist_ok=True)
     F.to_csv(wd / "dirty.csv", index=False)
-    # 3-row meta — order MUST match scripts/builtin/topk_cleaning.dml::prepareMeta:
-    #   row1 = schema strings (STRING/FP64/BOOLEAN), cast as Frame[String]
-    #   row2 = mask matrix (0/1) -> as.matrix(); last col = maskY (label mask flag)
-    #   row3 = fdMask (0/1)
-    # The previous version had rows 1 and 2 swapped, so as.matrix(row2) hit the schema
-    # strings ("FP64") and threw NumberFormatException -- "Unable to change to double".
     cats = [1 if str(F[c].dtype) in ("object", "category") else 0 for c in F.columns]
     schema = ["STRING" if c else "FP64" for c in cats]
     meta = pd.DataFrame([schema, cats, [0]*len(cats)])
     meta.to_csv(wd / "meta.csv", index=False, header=False)
     (wd / "out").mkdir(exist_ok=True)
-    # -exec singlenode forces pure control-program (no Spark): the bundled jars ship
-    # spark-core but NOT spark-unsafe, so any SparkExecutionContext init crashes with
-    # NoClassDefFoundError org.apache.spark.unsafe.Platform. singlenode avoids it entirely.
     cmd = ["java", "-Xmx12g", "-cp", jars, "org.apache.sysds.api.DMLScript",
            "-exec", "singlenode", "-f", str(wd / "driver.dml"), "-nvargs",
            f"dirtyData={wd}/dirty.csv", f"metaData={wd}/meta.csv",
@@ -160,9 +123,6 @@ def run_one(name, seed, workdir, jars) -> dict:
     t0 = time.time()
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
-        # ALWAYS dump full java stdout+stderr to a sidecar so the real DML error is visible
-        # (the hadoop NativeCodeLoader WARN is non-fatal noise; the actual compile/runtime
-        #  error lands earlier in the stream and was being truncated by a [-300:] tail).
         (wd / "java.log").write_text(f"=== CMD ===\n{' '.join(cmd)}\n\n"
                                      f"=== STDOUT ===\n{r.stdout}\n\n=== STDERR ===\n{r.stderr}")
         ok = (wd / "out" / "scores.csv").exists()
@@ -171,7 +131,6 @@ def run_one(name, seed, workdir, jars) -> dict:
             sc = pd.read_csv(wd / "out" / "scores.csv", header=None)
             clean = float(sc.values.flatten()[0])
             dirty = float(pd.read_csv(wd / "out" / "dirty.csv", header=None).values.flatten()[0])
-        # surface the most informative error line: prefer ERROR/Exception lines over the WARN tail
         stream = (r.stderr or "") + "\n" + (r.stdout or "")
         sig = [ln for ln in stream.splitlines()
                if any(k in ln for k in ("ERROR", "Exception", "error:", "Error:", "Caused by", "not found", "Invalid"))]

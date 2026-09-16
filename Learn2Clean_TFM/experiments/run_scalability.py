@@ -1,25 +1,3 @@
-"""
-experiments/run_scalability.py
-
-S — R7 scalability (docs/protocols/r7_scalability_protocol.md). Measures how each REWARD
-TERM scales with rows n and columns p, and the R7-vs-R3 per-call speedup. Synthetic data
-(make_classification) with a fixed corruption profile held constant across sizes, so scaling
-is isolated from task difficulty. Timing: perf_counter, warmup-excluded repeats, median+IQR.
-
-Terms timed per reward call (context cap c=512):
-  R7.accuracy  : TabPFN v2 fit+predict on ≤c subsampled context   → predicted ~flat in n (HS1)
-  R3.accuracy  : RandomForest fit on full n (NOT cap-able)        → grows ~n log n (HS4)
-  W1.drift     : per-column Wasserstein-1                          → O(p·n log n) (HS2)
-  quality      : missing-rate + exact dup-rate                    → O(n·p)
-Speedup S(n)=T_R3/T_R7 should grow with n (HS4). Fitted log-log exponent a per term (+R²).
-
-Experiments: S1 row scaling (sweep n, p=50), S2 column scaling (sweep p, n=fixed).
-
-Usage
------
-  PYTHONPATH=src:experiments python experiments/run_scalability.py
-  PYTHONPATH=src:experiments python experiments/run_scalability.py --n-grid 1000 5000 20000 100000 --repeats 5
-"""
 from __future__ import annotations
 
 import argparse
@@ -41,7 +19,6 @@ CONTEXT_CAP = 512
 def _inject(X: np.ndarray, seed: int) -> np.ndarray:
     rng = np.random.default_rng(seed)
     X = X.copy()
-    # fixed corruption profile: 10% missing cells + 5% outliers (held constant across sizes)
     n, p = X.shape
     mask = rng.random((n, p)) < 0.10
     X[mask] = np.nan
@@ -61,7 +38,6 @@ def time_terms(n: int, p: int, seed: int, repeats: int) -> Dict[str, float]:
     X = _inject(X, seed)
     Xdf = pd.DataFrame(X, columns=[f"c{i}" for i in range(p)])
     ref = {c: pd.Series(X[:, i]).dropna().values for i, c in enumerate(Xdf.columns)}
-    # impute for the model-based terms (TabPFN handles NaN; RF needs imputation)
     Ximp = np.where(np.isnan(X), np.nanmedian(X, axis=0), X)
 
     def t_tabpfn():
@@ -86,7 +62,7 @@ def time_terms(n: int, p: int, seed: int, repeats: int) -> Dict[str, float]:
 
     out = {}
     for name, fn in [("R7_acc_tabpfn", t_tabpfn), ("R3_acc_rf", t_rf), ("W1_drift", t_w1), ("quality", t_quality)]:
-        fn()  # warmup (excluded)
+        fn()
         ts = []
         for _ in range(repeats):
             t0 = time.perf_counter(); fn(); ts.append(time.perf_counter() - t0)
@@ -125,7 +101,6 @@ def main(n_grid, p_grid, p_fixed, n_fixed, repeats, seeds, output_dir=None) -> N
             rows.append(r); pd.DataFrame(rows).to_csv(out_dir / "scalability_raw.csv", index=False)
 
     df = pd.DataFrame(rows)
-    # Fitted exponents (S1, vs n)
     s1 = df[df.exp == "S1_rows"].groupby("n").median(numeric_only=True)
     print("\n=== FITTED SCALING EXPONENTS (log-log slope a, R²) over n ===")
     expo = {}

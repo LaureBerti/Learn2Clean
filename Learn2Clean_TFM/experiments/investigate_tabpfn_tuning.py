@@ -1,23 +1,3 @@
-"""
-experiments/investigate_tabpfn_tuning.py
-
-Robustness check: is the held-out protocol negative result
-(TFM-reward ≈ RF-reward) an artifact of an under-powered TabPFN configuration?
-
-D1 used TabPFN defaults: n_estimators=8, softmax_temperature=0.9,
-balance_probabilities=False, context cap=1024. This driver re-runs the EXACT
-held-out protocol nested comparison under several TabPFN configurations and reports, per
-config: TFM mean acc, RF mean acc, their gap, and how many datasets TFM wins.
-
-If a stronger TabPFN (larger ensemble, larger ICL context, probability balancing)
-opens a TFM>RF gap, then tuning matters and the null is premature. If the gap stays
-≈0 across configs, the negative result is robust to TabPFN tuning.
-
-Usage
------
-  PYTHONPATH=src python experiments/investigate_tabpfn_tuning.py \
-      --datasets hepatitis ionosphere diabetes blood_transfusion --seeds 42 1 2
-"""
 
 from __future__ import annotations
 
@@ -32,7 +12,6 @@ import pandas as pd
 
 import run_c2_tfm_reward_nested as G
 
-# Each config is a set of env overrides read by G._tabpfn_cfg() at call time.
 CONFIGS: Dict[str, Dict[str, str]] = {
     "default_e8_c1024":      {"TABPFN_N_ESTIMATORS": "8",  "TABPFN_CTX_CAP": "1024", "TABPFN_BALANCE": "0"},
     "ens32_c1024":           {"TABPFN_N_ESTIMATORS": "32", "TABPFN_CTX_CAP": "1024", "TABPFN_BALANCE": "0"},

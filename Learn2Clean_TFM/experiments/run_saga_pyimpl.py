@@ -1,45 +1,3 @@
-"""
-experiments/run_saga_pyimpl.py
-
-APPROXIMATE Python reimplementation of SAGA-style cleaning-pipeline search (cf. Siddiqi et al.), so we
-can report a SAGA-style accuracy AND wall-clock time on OUR datasets / OUR held-out protocol split --- a proxy
-for the real-engine SystemDS run (which failed on a cross-version signature mismatch). NOTE: this is
-an approximation, not a faithful port --- real SAGA optimises PHYSICAL pipelines with a Multi-Armed
-Bandit on top of evolutionary logical enumeration; here we use a single-stage genetic search and omit
-the bandit stage.
-
-What SAGA does, and what we mirror:
-  * A primitive library organised by functional category (MVI, OTLR, SCALE, CI, DIM), each with a
-    handful of operators/hyperparameters.  (We omit categories not in SAGA's library: power
-    transforms, dedup, random projection.)
-  * An EVOLUTIONARY top-k search: a population of pipelines is evaluated by a downstream model with
-    cross-validation; the top-k elites are kept and the next generation is bred by crossover +
-    mutation; repeat for max_iter generations.  Returns the best pipeline.
-  * The evaluator is SAGA's own: multinomial logistic regression (`multiLogReg`) accuracy under
-    k-fold CV.  We use sklearn LogisticRegression(multinomial) --- the faithful analogue.
-
-Budget used in THIS experiment: topK=3, population=20, generations=5, cvk=3. (These are the values we
-ran; they do NOT match the SystemDS `topk_cleaning` builtin defaults, which are topK=5, resource=20,
-max_iter=10, cvk=2.)
-
-HELD-OUT PROTOCOL: an outer 80/20 split holds out a sacred test that the SAGA search NEVER sees (the search
-does CV strictly inside the outer-train).  The best pipeline is then deployed once on the sacred test.
-Every per-fold / final cleaning transform is fit on its train rows only and applied to the held-out
-rows --- identical contract to run_saga_richops / run_c2_tfm_reward_nested.
-
-Reported per (dataset, seed):
-  saga_clean_acc / _f1   : best SAGA pipeline, multiLogReg, on the sacred test
-  saga_dirty_acc / _f1   : no-cleaning baseline (mean-impute only, to be runnable), same model/test
-  saga_clean_acc_tabpfn  : the SAME SAGA-selected pipeline deployed on TabPFN (for our head-to-head)
-  saga_sec               : wall-clock of the SAGA search (the time number)
-  n_eval                 : distinct pipeline evaluations performed
-
-Usage
------
-  PYTHONPATH=src:experiments python experiments/run_saga_pyimpl.py \
-      --datasets EEG Titanic AnimalShelter hepatitis ionosphere diabetes \
-      --seeds 42 1 2 3 4 5 6 7 [--with-tabpfn]
-"""
 from __future__ import annotations
 import argparse, sys, time
 from pathlib import Path
@@ -50,31 +8,28 @@ from sklearn.metrics import accuracy_score, f1_score
 
 ROOT = Path(__file__).parents[1]
 sys.path.insert(0, str(ROOT / "src")); sys.path.insert(0, str(ROOT / "experiments"))
-import run_saga_richops as R              # operator library + held-out protocol apply_pipeline
-import run_c2_tfm_reward_nested as G      # split constants + (optional) TabPFN deploy
+import run_saga_richops as R
+import run_c2_tfm_reward_nested as G
 
-OUTER = G.OUTER_TEST_SIZE                 # sacred outer test fraction (0.2)
-MCAR = R.MCAR                             # 0.15, same corruption as the rich-pool experiment
+OUTER = G.OUTER_TEST_SIZE
+MCAR = R.MCAR
 
-# --- SAGA-faithful primitive library (one operator per category; subset matching SAGA's) -----
-SAGA_MVI   = ["mean", "median", "knn", "knn3", "knn10", "mice"]   # imputeByMean/Median/kNN/MICE
-SAGA_OTLR  = [None, "iqr_rm", "z_rm", "winsor", "clipz"]          # outlierByIQR/BySd, winsorize
-SAGA_SCALE = [None, "minmax", "zscore"]                           # scale
-SAGA_CI    = [None, "smote"]                                      # class-imbalance (over-sampling)
-SAGA_DIM   = [None, "pca"]                                        # pca
+SAGA_MVI   = ["mean", "median", "knn", "knn3", "knn10", "mice"]
+SAGA_OTLR  = [None, "iqr_rm", "z_rm", "winsor", "clipz"]
+SAGA_SCALE = [None, "minmax", "zscore"]
+SAGA_CI    = [None, "smote"]
+SAGA_DIM   = [None, "pca"]
 CATS = [SAGA_MVI, SAGA_OTLR, SAGA_SCALE, SAGA_CI, SAGA_DIM]
 
-# SAGA `topk_cleaning` driver defaults --- kept identical for a faithful budget
 POP, GENS, TOPK, CVK = 20, 5, 3, 3
 
 
 def genome_to_pipe(g):
-    """(mvi, otlr, scale, ci, dim) -> apply_pipeline's 7-tuple (imp,otl,trans,scl,dim,bal,ddp)."""
     mvi, otl, scl, ci, dim = g
     return (mvi, otl, None, scl, dim, ci, None)
 
 
-DIRTY = ("mean", None, None, None, None)   # no-cleaning baseline (minimal impute to run the model)
+DIRTY = ("mean", None, None, None, None)
 
 
 def _logreg():
@@ -82,8 +37,6 @@ def _logreg():
 
 
 def cv_fitness(g, Xtr, ytr, seed):
-    """SAGA's evaluator: multiLogReg accuracy under stratified k-fold CV, transforms fit per-fold
-    (held-out protocol within the search). Returns mean fold accuracy, or -1 on failure."""
     pipe = genome_to_pipe(g)
     yv = ytr.values
     if len(np.unique(yv)) < 2:
@@ -123,7 +76,6 @@ def mutate(g, rng):
 
 
 def saga_search(Xtr, ytr, seed):
-    """Evolutionary top-k pipeline search (SAGA-faithful). Returns (best_genome, n_eval)."""
     rng = np.random.default_rng(seed)
     cache = {}
 

@@ -1,44 +1,3 @@
-"""
-experiments/run_c2_tfm_reward.py
-
-C2 — TFM-Aware Reward Experiment
-==================================
-Claim: "TFMAwareReward produces statistically higher TabPFN v2 test accuracy
-than RF-reward cleaning on ≥7/10 datasets (Wilcoxon p<0.05); winning pipelines
-differ structurally in ≥6/10 datasets."
-
-Design
-------
-* Load all 10 OpenML benchmark datasets.
-* Inject MCAR 15% on all datasets (NATURAL_MISSING datasets still get MCAR on
-  top to create a uniform error level; hepatitis/diabetes/adult already have
-  real NaN, so the total missing rate will be higher — as intended).
-* Enumerate all 112 valid pipelines (≤3 steps, no repeated action group).
-* For each dataset score all 112 pipelines under BOTH reward modes:
-    - RF reward  : MultiObjectiveReward(eval_model="random_forest")
-    - TFM reward : TFMAwareReward(eval_model="tabpfn")
-* For each reward mode, select the best pipeline; apply it; then evaluate the
-  resulting cleaned data with TabPFN v2 accuracy AND ECE.
-* ECE formula: Σ|conf − acc| × n_bin / n_total  (10-bin version)
-* Wilcoxon signed-rank test across datasets (paired: same dataset, two conditions).
-
-Outputs
--------
-  outputs/paper_ready/c2_tfm_reward/
-    results.csv              — (dataset, reward_mode, best_pipeline, tabpfn_acc, ece)
-    pipeline_overlap.csv     — per dataset: do best pipelines from RF vs TFM match?
-    c2_main_results.tex      — LaTeX table for the paper
-
-Dependency check
-----------------
-TabPFN v2 must be installed:  pip install tabpfn>=2.0
-
-Usage
------
-  PYTHONPATH=src python experiments/run_c2_tfm_reward.py
-  PYTHONPATH=src python experiments/run_c2_tfm_reward.py --datasets hepatitis ionosphere
-  PYTHONPATH=src python experiments/run_c2_tfm_reward.py --output-dir /tmp/c2 --seed 0
-"""
 
 from __future__ import annotations
 
@@ -58,11 +17,8 @@ from sklearn.calibration import calibration_curve
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 
-# ---------------------------------------------------------------------------
-# Dependency check — must happen before any local imports that load tabpfn
-# ---------------------------------------------------------------------------
 try:
-    import tabpfn as _tabpfn_check  # noqa: F401
+    import tabpfn as _tabpfn_check
     TABPFN_AVAILABLE = True
 except ImportError:
     TABPFN_AVAILABLE = False
@@ -76,9 +32,6 @@ if not TABPFN_AVAILABLE:
     )
     sys.exit("Install tabpfn>=2.0 first")
 
-# ---------------------------------------------------------------------------
-# Local imports (after dependency check so we don't shadow the error above)
-# ---------------------------------------------------------------------------
 sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
 
 from learn2clean_v3.actions import (
@@ -94,14 +47,10 @@ from learn2clean_v3.rewards import MultiObjectiveReward, TFMAwareReward
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s | %(message)s")
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
 NATURAL_MISSING: frozenset = frozenset({"hepatitis", "diabetes", "adult"})
 MCAR_RATE: float = 0.15
 N_BINS_ECE: int = 10
 
-# Action definitions (same 7-action suite as C1)
 ACTION_GROUPS: Dict[int, str] = {
     0: "impute",  1: "impute",  2: "impute",
     3: "outlier", 4: "outlier",
@@ -114,9 +63,6 @@ ACTION_LABELS: Dict[int, str] = {
 }
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 def build_actions() -> List[DataFrameAction]:
     return [
@@ -131,8 +77,7 @@ def build_actions() -> List[DataFrameAction]:
 
 
 def enumerate_valid_pipelines(max_len: int = 3) -> List[Tuple[int, ...]]:
-    """All ordered sequences ≤ max_len steps with no repeated action group."""
-    result: List[Tuple[int, ...]] = [()]          # no-op pipeline
+    result: List[Tuple[int, ...]] = [()]
     for length in range(1, max_len + 1):
         for seq in permutations(range(len(ACTION_GROUPS)), length):
             groups = [ACTION_GROUPS[i] for i in seq]
@@ -153,7 +98,6 @@ def apply_pipeline(
     pipeline: Tuple[int, ...],
     actions: List[DataFrameAction],
 ) -> Optional[pd.DataFrame]:
-    """Apply a sequence of actions. Returns None on failure."""
     X_out = X.copy()
     for idx in pipeline:
         try:
@@ -165,14 +109,11 @@ def apply_pipeline(
 
 
 def compute_ece(y_true: np.ndarray, y_prob: np.ndarray, n_bins: int = 10) -> float:
-    """Expected Calibration Error: Σ |conf − acc| × n_bin / n_total."""
     n_total = len(y_true)
     if n_total == 0:
         return float("nan")
-    # calibration_curve works for binary; for multiclass use max-prob
     if y_prob.ndim > 1 and y_prob.shape[1] > 1:
         conf = y_prob.max(axis=1)
-        # binarise: was the top class correct?
         pred_class = y_prob.argmax(axis=1)
         correct = (pred_class == y_true).astype(int)
     else:
@@ -198,7 +139,6 @@ def evaluate_with_tabpfn(
     y: pd.Series,
     seed: int = 42,
 ) -> Tuple[float, float]:
-    """Fit TabPFN v2 and return (accuracy, ECE). Returns (NaN, NaN) on error."""
     from tabpfn import TabPFNClassifier
 
     numeric = X_clean.select_dtypes(include="number")
@@ -217,7 +157,6 @@ def evaluate_with_tabpfn(
 
     X_vals = numeric.values.astype(float)
 
-    # Subsample for speed (TabPFN v2 cap)
     max_rows = 1024
     if len(X_vals) > max_rows:
         rng = np.random.default_rng(seed)
@@ -257,7 +196,6 @@ def sample_pipelines(
     max_n: int,
     seed: int = 42,
 ) -> List[Tuple[int, ...]]:
-    """Stratified subsample: always keep no-op + all 1-step; fill rest proportionally."""
     if max_n <= 0 or max_n >= len(pipelines):
         return pipelines
 
@@ -292,7 +230,6 @@ def build_cleaning_cache(
     actions: List[DataFrameAction],
     pipelines: List[Tuple[int, ...]],
 ) -> Dict[Tuple, Optional[pd.DataFrame]]:
-    """Apply every pipeline to X_dirty ONCE; cache results."""
     return {seq: apply_pipeline(X_dirty, y, seq, actions) for seq in pipelines}
 
 
@@ -301,7 +238,6 @@ def build_tabpfn_cache(
     y: pd.Series,
     seed: int,
 ) -> Dict[Tuple, Tuple[float, float]]:
-    """Call TabPFN on each cached cleaned dataset exactly once."""
     result: Dict[Tuple, Tuple[float, float]] = {}
     for seq, X_out in cleaning_cache.items():
         if X_out is None:
@@ -317,7 +253,6 @@ def best_from_cache_rf(
     y: pd.Series,
     rf_reward: MultiObjectiveReward,
 ) -> Tuple[int, ...]:
-    """Select highest RF-reward pipeline from pre-cleaned cache (no TabPFN)."""
     best_score = -np.inf
     best_pipeline: Tuple[int, ...] = ()
     for seq, X_out in cleaning_cache.items():
@@ -340,7 +275,6 @@ def best_from_tfm_cache(
     n0: int,
     tfm_reward: TFMAwareReward,
 ) -> Tuple[int, ...]:
-    """Select best TFMAwareReward pipeline using pre-computed TabPFN scores."""
     w_acc  = getattr(tfm_reward, "weight_accuracy",  0.50)
     w_ret  = getattr(tfm_reward, "weight_retention", 0.35)
     w_qual = getattr(tfm_reward, "weight_quality",   0.15)
@@ -366,12 +300,8 @@ def best_from_tfm_cache(
     return best_pipeline
 
 
-# ---------------------------------------------------------------------------
-# LaTeX table
-# ---------------------------------------------------------------------------
 
 def make_latex_table(results_df: pd.DataFrame) -> str:
-    """Build the main C2 result table (per-dataset RF vs TFM accuracy and ECE)."""
     pivot_acc = results_df.pivot(
         index="dataset", columns="reward_mode", values="tabpfn_acc"
     )
@@ -405,7 +335,6 @@ def make_latex_table(results_df: pd.DataFrame) -> str:
         rf_ece_s  = f"{rf_ece:.4f}"  if np.isfinite(rf_ece)  else "---"
         tfm_ece_s = f"{tfm_ece:.4f}" if np.isfinite(tfm_ece) else "---"
 
-        # Bold the better accuracy
         if np.isfinite(rf_acc) and np.isfinite(tfm_acc):
             if tfm_acc >= rf_acc:
                 tfm_acc_s = r"\textbf{" + tfm_acc_s + r"}"
@@ -415,7 +344,6 @@ def make_latex_table(results_df: pd.DataFrame) -> str:
         ds_tex = ds.replace("_", r"\_")
         lines.append(f"  {ds_tex} & {rf_acc_s} & {tfm_acc_s} & {rf_ece_s} & {tfm_ece_s} \\\\")
 
-    # Summary row: mean across datasets
     for mode in ["rf", "tfm"]:
         subset = results_df[results_df["reward_mode"] == mode]
         lines.append(r"\midrule")
@@ -450,9 +378,6 @@ def make_latex_table(results_df: pd.DataFrame) -> str:
     return "\n".join(lines)
 
 
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
 
 def main(
     dataset_names: Optional[List[str]] = None,
@@ -494,13 +419,11 @@ def main(
         print(f"  Loaded: {len(X)} rows × {X.shape[1]} cols  "
               f"| missing={X.isna().mean().mean():.2%}")
 
-        # Inject MCAR 15% on all datasets
         mcar_profile = ErrorProfile("mcar", rate=MCAR_RATE, seed=seed)
         X_dirty, y_dirty = apply_error_profile(X, y, mcar_profile)
         print(f"  MCAR {MCAR_RATE:.0%} injected → missing={X_dirty.isna().mean().mean():.2%}")
         n0 = len(X_dirty)
 
-        # Build reward functions
         rf_reward = MultiObjectiveReward(
             weight_accuracy=0.5, weight_retention=0.3, weight_quality=0.2,
             drift_penalty_coeff=0.1, eval_model="random_forest",
@@ -512,7 +435,6 @@ def main(
             eval_metric=spec.eval_metric,
         )
 
-        # ── Option 2: one shared cleaning cache + one TabPFN cache ───────────
         print(f"  Building cleaning cache ({len(pipelines)} pipelines) …", end=" ", flush=True)
         cleaning_cache = build_cleaning_cache(X_dirty, y_dirty, actions, pipelines)
         print("done")
@@ -524,7 +446,6 @@ def main(
 
         dataset_rows: Dict[str, Dict] = {}
 
-        # RF search — reads RF reward from cleaning cache (no TabPFN)
         best_rf = best_from_cache_rf(cleaning_cache, X_dirty, y_dirty, rf_reward)
         acc_rf, ece_rf = tabpfn_cache.get(best_rf, (float("nan"), float("nan")))
         print(f"  RF  best: {pipeline_label(best_rf)}  acc={acc_rf:.4f}  ECE={ece_rf:.4f}")
@@ -537,7 +458,6 @@ def main(
         }
         results_rows.append(dataset_rows["rf"])
 
-        # TFM search — reads from TabPFN cache (no new TabPFN calls)
         best_tfm = best_from_tfm_cache(cleaning_cache, tabpfn_cache, X_dirty, n0, tfm_reward)
         acc_tfm, ece_tfm = tabpfn_cache.get(best_tfm, (float("nan"), float("nan")))
         print(f"  TFM best: {pipeline_label(best_tfm)}  acc={acc_tfm:.4f}  ECE={ece_tfm:.4f}")
@@ -550,7 +470,6 @@ def main(
         }
         results_rows.append(dataset_rows["tfm"])
 
-        # Pipeline overlap analysis
         rf_pipe  = pipeline_label(best_rf)
         tfm_pipe = pipeline_label(best_tfm)
         overlap_rows.append({
@@ -563,7 +482,6 @@ def main(
         print(f"  Pipeline match: {rf_pipe == tfm_pipe}")
         print(f"  Done in {time.time() - t0:.1f}s")
 
-    # ── Aggregate & save ─────────────────────────────────────────────────────
     if not results_rows:
         print("\nNo results to save.")
         return
@@ -574,7 +492,6 @@ def main(
     results_df.to_csv(out_dir / "results.csv", index=False)
     overlap_df.to_csv(out_dir / "pipeline_overlap.csv", index=False)
 
-    # Wilcoxon test: TFM acc vs RF acc across datasets (paired)
     rf_accs  = results_df[results_df["reward_mode"] == "rf"]["tabpfn_acc"].dropna().values
     tfm_accs = results_df[results_df["reward_mode"] == "tfm"]["tabpfn_acc"].dropna().values
     n_shared = min(len(rf_accs), len(tfm_accs))
@@ -594,7 +511,6 @@ def main(
     print(f"TFM wins on accuracy: {n_tfm_wins}/{n_shared} datasets")
     print(f"Different pipelines:  {n_diff_pipelines}/{len(overlap_df)} datasets")
 
-    # LaTeX table
     latex = make_latex_table(results_df)
     (out_dir / "c2_main_results.tex").write_text(latex)
 
@@ -602,7 +518,6 @@ def main(
     print(f"Total time: {time.time() - t0_total:.1f}s")
 
 
-# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

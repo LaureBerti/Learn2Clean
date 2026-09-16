@@ -1,34 +1,3 @@
-"""
-experiments/run_corruption_sweep.py
-
-Corruption-TYPE sweep + label-aware reward arm — where does cleaning (and a TFM-aware
-reward) actually matter for TabPFN? Held-out protocol, on OpenML(10) + SAGA(3) datasets.
-
-Motivation (from prior results): TabPFN is robust to the corruptions we tried (MCAR,
-outliers) → cleaning is inert → no reward can win. The exception should be corruptions
-TabPFN is NOT robust to — chiefly LABEL NOISE, which directly pollutes the in-context set
-(RF is comparatively robust via ensembling). So we sweep corruption type and add a
-label-aware arm to see if a genuine, scoped win appears.
-
-Conditions (corruption type @ rate):
-  none · mcar@0.2 · mar@0.2 · outlier@0.2 · duplicate@0.2 · label@0.2 · label@0.35
-Feature corruptions hit ALL data (test features also dirty, realistic). LABEL noise hits
-ONLY the training/selection labels (y_sel); test labels stay ground truth (we measure
-accuracy against the TRUE labels — cleaning's job is to de-noise the in-context set).
-
-Arms (all held-out protocol: inner-val selection, final eval on untouched test):
-  no_clean : raw (dirty) D_sel → TabPFN
-  R3       : RF-reward selection over base ops (impute/outlier/scale)
-  R7       : TabPFN-reward selection over base ops
-  R7+label : TabPFN-reward over base ops + a MISLABEL-REMOVAL operator (the label-aware arm)
-
-Key gaps: (R7+label − R7) isolates the label operator's value; (R7 − no_clean) is generic
-cleaning's value. Prediction: ≈0 for feature corruptions (inert), >0 for label noise via R7+label.
-
-Usage
------
-  PYTHONPATH=src:experiments python experiments/run_corruption_sweep.py --datasets hepatitis EEG --seeds 42 1 2
-"""
 from __future__ import annotations
 
 import argparse
@@ -55,9 +24,6 @@ CONDITIONS = [("none", 0.0), ("mcar", 0.2), ("mar", 0.2), ("outlier", 0.2),
               ("duplicate", 0.2), ("label", 0.2), ("label", 0.35)]
 
 
-# --------------------------------------------------------------------------- #
-# Label-noise injection (training labels only) + mislabel-removal operator
-# --------------------------------------------------------------------------- #
 def inject_label_noise(y: pd.Series, rate: float, seed: int) -> pd.Series:
     rng = np.random.default_rng(seed)
     yv = np.asarray(y).copy()
@@ -71,10 +37,7 @@ def inject_label_noise(y: pd.Series, rate: float, seed: int) -> pd.Series:
 
 
 class LabelCleaner:
-    """Mislabel removal (confident-learning lite): drop rows where a CV LogReg confidently
-    disagrees with the given label. Uses y → only valid on the training/selection set.
-    Plain class (apply_pipeline only needs .reset() and __call__)."""
-    def reset(self):  # noqa: D401
+    def reset(self):
         return self
 
     def __call__(self, X: pd.DataFrame, y) -> pd.DataFrame:
@@ -178,12 +141,10 @@ def run_one(ds, ctype, rate, seed, base_pipes, ext_pipes) -> Optional[Dict]:
         X_sel, X_test, y_sel, y_test = train_test_split(Xd, yd, test_size=0.30, random_state=seed)
     X_sel, y_sel = X_sel.reset_index(drop=True), y_sel.reset_index(drop=True)
     X_test, y_test = X_test.reset_index(drop=True), y_test.reset_index(drop=True)
-    # LABEL noise: corrupt only the training labels; test labels stay ground truth
     if ctype == "label":
         y_sel = inject_label_noise(y_sel, rate, seed)
 
     row = {"dataset": ds, "ctype": f"{ctype}_{rate}", "seed": seed}
-    # arms
     arms = {
         "no_clean": ((), BASE),
         "R3": (select(X_sel, y_sel, base_pipes, BASE, seed, "rf"), BASE),

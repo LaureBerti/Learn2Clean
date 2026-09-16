@@ -1,33 +1,3 @@
-"""
-experiments/run_c1_reward_benchmark.py
-
-C1 — Reward Taxonomy Experiment
-=================================
-Compare 7 reward functions on 10 OpenML benchmark datasets × all valid action
-pipelines (≤ 3 steps, no repeated action group = 112 sequences).
-
-Error injection
----------------
-Datasets with natural missing values (hepatitis, diabetes, adult) are used as-is.
-All others receive MCAR 15% injection before scoring.
-
-Produces
---------
-  outputs/paper_ready/c1_reward_benchmark/
-    all_results.csv          — one row per (dataset, pipeline, reward_fn)
-    summary_by_reward.csv    — mean ± std best score per reward fn across datasets
-    summary_by_dataset.csv   — best pipeline per (dataset × reward fn)
-    c1_reward_compare.tex    — LaTeX table for paper (Table 1)
-
-Usage
------
-  conda activate l2c_torch          # or: source .venv/bin/activate
-  cd Learn2Clean_TFM
-  PYTHONPATH=src python experiments/run_c1_reward_benchmark.py
-
-  # Subset of datasets (faster smoke-test)
-  PYTHONPATH=src python experiments/run_c1_reward_benchmark.py --datasets hepatitis ionosphere diabetes
-"""
 
 from __future__ import annotations
 
@@ -65,20 +35,12 @@ from learn2clean_v3.rewards import (
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s | %(message)s")
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Datasets that already have natural missing — do NOT inject MCAR on top
-# ---------------------------------------------------------------------------
 NATURAL_MISSING: set = {"hepatitis", "diabetes", "adult"}
 
-# Main injection protocol for C1 (MCAR 15%)
 MCAR_PROFILE = ErrorProfile("mcar", rate=0.15, seed=42)
 
-# Output directory
 OUT_DIR = Path(__file__).parents[1] / "outputs" / "paper_ready" / "c1_reward_benchmark"
 
-# ---------------------------------------------------------------------------
-# Action suite (7 parameterized actions — same as 02_hf_benchmark.py)
-# ---------------------------------------------------------------------------
 
 ACTION_GROUPS: Dict[int, str] = {
     0: "impute", 1: "impute", 2: "impute",
@@ -109,12 +71,8 @@ def build_actions() -> List[DataFrameAction]:
     ]
 
 
-# ---------------------------------------------------------------------------
-# Pipeline enumeration (reused from 02_hf_benchmark.py)
-# ---------------------------------------------------------------------------
 
 def enumerate_valid_pipelines(max_len: int = 3) -> List[Tuple[int, ...]]:
-    """All ordered sequences ≤ max_len steps with no repeated action group."""
     from itertools import permutations
     result: List[Tuple[int, ...]] = [()]
     for length in range(1, max_len + 1):
@@ -131,9 +89,6 @@ def pipeline_label(pipeline: Tuple[int, ...]) -> str:
     return " → ".join(ACTION_LABELS[i] for i in pipeline)
 
 
-# ---------------------------------------------------------------------------
-# Reward function suite (7 functions — C1 uses RF eval throughout)
-# ---------------------------------------------------------------------------
 
 def build_reward_functions(eval_metric: str = "f1") -> List[BaseReward]:
     m = eval_metric
@@ -163,9 +118,6 @@ def build_reward_functions(eval_metric: str = "f1") -> List[BaseReward]:
     ]
 
 
-# ---------------------------------------------------------------------------
-# Core scoring loop
-# ---------------------------------------------------------------------------
 
 def score_all_pipelines(
     X: pd.DataFrame,
@@ -174,7 +126,6 @@ def score_all_pipelines(
     reward_fns: List[BaseReward],
     pipelines: List[Tuple[int, ...]],
 ) -> pd.DataFrame:
-    """Score every pipeline under every reward function. Returns a DataFrame."""
     rows = []
     for seq in pipelines:
         X_clean = X.copy()
@@ -204,15 +155,8 @@ def score_all_pipelines(
     return pd.DataFrame(rows)
 
 
-# ---------------------------------------------------------------------------
-# LaTeX table generator
-# ---------------------------------------------------------------------------
 
 def make_latex_table(summary: pd.DataFrame) -> str:
-    """
-    Build a LaTeX table of mean ± std best score per reward function.
-    summary must have columns: reward_fn, mean, std, max.
-    """
     lines = [
         r"\begin{table}[t]",
         r"\centering",
@@ -242,9 +186,6 @@ def make_latex_table(summary: pd.DataFrame) -> str:
     return "\n".join(lines)
 
 
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
 
 def main(dataset_names: Optional[List[str]] = None) -> None:
     if dataset_names is None:
@@ -264,7 +205,6 @@ def main(dataset_names: Optional[List[str]] = None) -> None:
         print(f"  Dataset: {ds_name}")
         t0 = time.time()
 
-        # Load
         try:
             X_clean, y, spec = load_dataset(ds_name, use_cache=True)
         except Exception as exc:
@@ -275,7 +215,6 @@ def main(dataset_names: Optional[List[str]] = None) -> None:
               f"| missing={X_clean.isna().mean().mean():.2%}  "
               f"| metric={spec.eval_metric}")
 
-        # Error injection (MCAR 15% for datasets without natural missing)
         if ds_name not in NATURAL_MISSING:
             X_dirty, y = apply_error_profile(X_clean, y, MCAR_PROFILE)
             print(f"  Injected MCAR 15% → missing={X_dirty.isna().mean().mean():.2%}")
@@ -283,17 +222,14 @@ def main(dataset_names: Optional[List[str]] = None) -> None:
             X_dirty = X_clean
             print(f"  Natural missing retained (no injection)")
 
-        # Build reward functions configured for this dataset's eval metric
         reward_fns = build_reward_functions(eval_metric=spec.eval_metric)
 
-        # Score all pipelines
         print(f"  Scoring {len(pipelines)} pipelines × {len(reward_fns)} reward fns …")
         scored = score_all_pipelines(X_dirty, y, actions, reward_fns, pipelines)
 
         elapsed = time.time() - t0
         print(f"  Done in {elapsed:.1f}s")
 
-        # Collect rows for all_results.csv
         for _, row in scored.iterrows():
             for rf in reward_fns:
                 all_rows.append({
@@ -305,7 +241,6 @@ def main(dataset_names: Optional[List[str]] = None) -> None:
                     "score":      row.get(rf.name, np.nan),
                 })
 
-        # Best pipeline per reward function → summary
         for rf in reward_fns:
             col = rf.name
             if col not in scored.columns:
@@ -320,7 +255,6 @@ def main(dataset_names: Optional[List[str]] = None) -> None:
                 "best_score":    best_row[col],
             })
 
-        # Per-dataset best pipeline printout
         for rf in reward_fns:
             col = rf.name
             if col not in scored.columns:
@@ -328,7 +262,6 @@ def main(dataset_names: Optional[List[str]] = None) -> None:
             best = scored.nlargest(1, col).iloc[0]
             print(f"    {col:40s}  best={best[col]:.4f}  pipeline: {best['pipeline']}")
 
-    # ── Aggregate results ────────────────────────────────────────────────────
     if not summary_rows:
         print("\nNo results to aggregate.")
         return
@@ -336,7 +269,6 @@ def main(dataset_names: Optional[List[str]] = None) -> None:
     all_df = pd.DataFrame(all_rows)
     summary_df = pd.DataFrame(summary_rows)
 
-    # Mean ± std best score per reward function across datasets
     rf_perf = (
         summary_df.groupby("reward_fn")["best_score"]
         .agg(["mean", "std", "max"])
@@ -350,7 +282,6 @@ def main(dataset_names: Optional[List[str]] = None) -> None:
     print("C1 — Mean best score per reward function (across datasets):")
     print(rf_perf.to_string(index=False, float_format="{:.4f}".format))
 
-    # Save
     all_df.to_csv(OUT_DIR / "all_results.csv", index=False)
     summary_df.to_csv(OUT_DIR / "summary_by_dataset.csv", index=False)
     rf_perf.to_csv(OUT_DIR / "summary_by_reward.csv", index=False)
@@ -363,7 +294,6 @@ def main(dataset_names: Optional[List[str]] = None) -> None:
     print(f"Total time: {total:.1f}s")
 
 
-# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="C1 reward taxonomy benchmark")

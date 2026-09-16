@@ -1,6 +1,3 @@
-"""Merge the prior-distance shards and report (a) non-degeneracy + (b) Spearman correlation of
-each estimator (M1-M4) and the ensembles (M2+M3, M1+M2+M3) with acc / macro-F1 / ECE, pooled
-within (dataset,seed) over all 13 datasets x 8 seeds."""
 from __future__ import annotations
 from pathlib import Path
 import numpy as np, pandas as pd

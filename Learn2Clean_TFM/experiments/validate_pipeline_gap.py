@@ -1,27 +1,3 @@
-"""
-experiments/validate_pipeline_gap.py
-
-Oracle Gap Validation
-=====================
-Validates that best-of-20 (sampled) ≈ best-of-302 (full) for B-greedy-TFM
-on one or more datasets under MCAR 15%.
-
-Runs both searches using the shared TabPFN cache (build once, query both),
-so total cost = 302 TabPFN calls + 2 (B0/B1) regardless — the 20-pipeline
-result is a free by-product of the full run.
-
-Outputs
--------
-  outputs/paper_ready/pipeline_gap/
-    gap_results.csv      — per dataset: acc/ECE for best-of-N vs best-of-20
-    gap_validation.md    — human-readable report for the paper
-
-Usage
------
-  PYTHONPATH=src python experiments/validate_pipeline_gap.py
-  PYTHONPATH=src python experiments/validate_pipeline_gap.py --datasets hepatitis ionosphere
-  PYTHONPATH=src python experiments/validate_pipeline_gap.py --max-sample 20 --seed 42
-"""
 
 from __future__ import annotations
 
@@ -39,7 +15,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 
 try:
-    import tabpfn as _check  # noqa: F401
+    import tabpfn as _check
     TABPFN_AVAILABLE = True
 except ImportError:
     TABPFN_AVAILABLE = False
@@ -60,9 +36,6 @@ from learn2clean_v3.data.error_injection import ErrorProfile, apply_error_profil
 from learn2clean_v3.data.openml_loader import load_dataset
 from learn2clean_v3.rewards import TFMAwareReward
 
-# ---------------------------------------------------------------------------
-# Constants — mirror C3 exactly
-# ---------------------------------------------------------------------------
 MCAR_RATE = 0.15
 N_BINS_ECE = 10
 
@@ -109,7 +82,6 @@ def sample_pipelines(
     max_n: int,
     seed: int = 42,
 ) -> List[Tuple[int, ...]]:
-    """Same stratified sampler used in C2/C3/C4."""
     if max_n <= 0 or max_n >= len(pipelines):
         return pipelines
     noop       = [p for p in pipelines if len(p) == 0]
@@ -210,7 +182,6 @@ def evaluate_with_tabpfn(
 def tfm_score_from_cache(
     X_out: pd.DataFrame, acc: float, n0: int, tfm_reward: TFMAwareReward,
 ) -> float:
-    """Inline TFMAwareReward formula using pre-computed TabPFN acc."""
     if not np.isfinite(acc):
         return -np.inf
     w_acc  = getattr(tfm_reward, "weight_accuracy",  0.50)
@@ -232,8 +203,6 @@ def run_gap_check(
     actions: List[DataFrameAction],
     seed: int,
 ) -> Dict:
-    """Build one shared TabPFN cache over all 302 pipelines; find best-of-302
-    and best-of-N from the same cache. Total cost: 302 TabPFN calls."""
 
     X, y, spec = load_dataset(ds_name, use_cache=True)
     profile = ErrorProfile("mcar", rate=MCAR_RATE, seed=seed)
@@ -247,7 +216,6 @@ def run_gap_check(
         drift_penalty_coeff=0.05, eval_model="tabpfn", eval_metric=spec.eval_metric,
     )
 
-    # ── Build FULL cleaning + TabPFN cache (302 pipelines, one pass) ─────────
     print(f"  Applying {len(all_pipelines)} pipelines … ", end="", flush=True)
     t0 = time.time()
     cleaning_cache: Dict[Tuple, Optional[pd.DataFrame]] = {
@@ -266,7 +234,6 @@ def run_gap_check(
     t_cache = time.time() - t0
     print(f"done ({t_cache:.1f}s)")
 
-    # ── Best-of-302 (full exhaustive) ─────────────────────────────────────────
     best_full = max(
         (seq for seq, X_out in cleaning_cache.items() if X_out is not None),
         key=lambda seq: tfm_score_from_cache(
@@ -276,7 +243,6 @@ def run_gap_check(
     )
     acc_full, ece_full = tabpfn_cache.get(best_full, (float("nan"), float("nan")))
 
-    # ── Best-of-N (sampled subset, same cache — zero extra cost) ─────────────
     sampled_set = set(sampled_pipelines)
     best_sampled = max(
         (seq for seq in sampled_pipelines if cleaning_cache.get(seq) is not None),
@@ -287,7 +253,6 @@ def run_gap_check(
     )
     acc_sampled, ece_sampled = tabpfn_cache.get(best_sampled, (float("nan"), float("nan")))
 
-    # ── Gap ───────────────────────────────────────────────────────────────────
     acc_gap = acc_full - acc_sampled if (np.isfinite(acc_full) and np.isfinite(acc_sampled)) else float("nan")
     ece_gap = ece_sampled - ece_full if (np.isfinite(ece_full) and np.isfinite(ece_sampled)) else float("nan")
     rel_gap = acc_gap / max(abs(acc_full), 1e-9) if np.isfinite(acc_gap) else float("nan")
@@ -369,7 +334,7 @@ def main(
     seed: int = 42,
 ) -> None:
     if dataset_names is None:
-        dataset_names = ["hepatitis"]   # default: one fast dataset
+        dataset_names = ["hepatitis"]
 
     out_dir = Path(output_dir) if output_dir else (
         Path(__file__).parents[1] / "outputs" / "paper_ready" / "pipeline_gap"

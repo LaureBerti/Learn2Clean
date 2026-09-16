@@ -1,35 +1,3 @@
-"""experiments/run_inject_errors.py
-
-Step 1 — Generate all synthetic error variants for cached datasets.
-===================================================================
-Requires that run_load_datasets.py has been run first (cache must exist).
-
-For each dataset × ErrorProfile in the full factorial grid, this script:
-  1. Loads the raw cached parquet (outputs/datasets/<name>_raw.parquet).
-  2. Applies the error injection protocol.
-  3. Saves the result as outputs/datasets/<name>_<tag>.parquet.
-
-The operation is idempotent: existing output files are skipped unless
---force is supplied.
-
-Full injection grid (from contributions.md):
-  MCAR:        rate ∈ {0.05, 0.10, 0.15, 0.20, 0.30}
-  MAR:         rate = 0.15
-  Outliers:    k ∈ {3, 5} × rate ∈ {0.05, 0.10}
-  Duplicates:  rate ∈ {0.05, 0.10, 0.20}
-  "none":      clean baseline (always included)
-
-File naming: outputs/datasets/<name>_<tag>.parquet
-  e.g.        outputs/datasets/hepatitis_mcar_p015.parquet
-              outputs/datasets/hepatitis_out_k3_p010.parquet
-              outputs/datasets/hepatitis_none_p000.parquet
-
-Usage::
-
-    PYTHONPATH=src python experiments/run_inject_errors.py
-    PYTHONPATH=src python experiments/run_inject_errors.py --datasets hepatitis diabetes
-    PYTHONPATH=src python experiments/run_inject_errors.py --force
-"""
 
 from __future__ import annotations
 
@@ -41,9 +9,6 @@ from typing import List, Optional
 
 import pandas as pd
 
-# ---------------------------------------------------------------------------
-# Path bootstrap
-# ---------------------------------------------------------------------------
 _SRC = Path(__file__).parents[1] / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
@@ -61,9 +26,6 @@ logger = logging.getLogger(__name__)
 _CACHE_DIR = Path(__file__).parents[1] / "outputs" / "datasets"
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 def _raw_cache_path(name: str) -> Path:
     return _CACHE_DIR / f"{name}_raw.parquet"
@@ -74,14 +36,6 @@ def _output_path(name: str, profile: ErrorProfile) -> Path:
 
 
 def _load_raw(name: str) -> tuple[pd.DataFrame, pd.Series]:
-    """Load the raw cached parquet and split into (X, y).
-
-    Raises
-    ------
-    FileNotFoundError
-        If the raw cache does not exist.  The caller should run
-        run_load_datasets.py first.
-    """
     path = _raw_cache_path(name)
     if not path.exists():
         raise FileNotFoundError(
@@ -98,16 +52,12 @@ def _save_variant(
     y_dirty: pd.Series,
     out_path: Path,
 ) -> None:
-    """Persist (X_dirty, y_dirty) as a single parquet with __target__ column."""
     out_path.parent.mkdir(parents=True, exist_ok=True)
     df = X_dirty.copy()
     df["__target__"] = y_dirty.values
     df.to_parquet(out_path, index=False, engine="pyarrow")
 
 
-# ---------------------------------------------------------------------------
-# Core function
-# ---------------------------------------------------------------------------
 
 def inject_all(
     dataset_names: List[str],
@@ -135,7 +85,6 @@ def inject_all(
             )
             continue
 
-        # Load the raw (un-preprocessed) dataset once per dataset
         try:
             X_raw, y_raw = _load_raw(name)
         except FileNotFoundError as exc:
@@ -150,13 +99,11 @@ def inject_all(
         for profile in profiles:
             out_path = _output_path(name, profile)
 
-            # Idempotency: skip if output already exists and --force not set
             if out_path.exists() and not force:
                 skipped += 1
                 logger.debug("skip existing: %s", out_path)
                 continue
 
-            # Apply injection
             try:
                 X_dirty, y_dirty = apply_error_profile(X_raw, y_raw, profile)
             except Exception as exc:
@@ -164,7 +111,6 @@ def inject_all(
                 print(f"  [FAIL] {name} {profile.tag} — injection error: {exc}")
                 continue
 
-            # Persist
             try:
                 _save_variant(X_dirty, y_dirty, out_path)
             except Exception as exc:
@@ -175,7 +121,6 @@ def inject_all(
             generated += 1
             print(f"  {name:<20} {profile.tag:<16} → {out_path}")
 
-    # ── Summary ───────────────────────────────────────────────────────────────
     print()
     print(
         f"Done — generated: {generated}, "
@@ -187,9 +132,6 @@ def inject_all(
     print()
 
 
-# ---------------------------------------------------------------------------
-# Entry point
-# ---------------------------------------------------------------------------
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(

@@ -1,23 +1,3 @@
-"""
-experiments/run_noise_robust_rich.py
-
-Noise-robust R7 variants on the RICH operator pool (+ label-clean toggle), under label noise,
-8 seeds, imbalanced datasets, accuracy AND macro-F1 on a SACRED CLEAN test.
-
-EFFICIENT DESIGN: enumerate a SHARED set of candidate pipelines once; for each candidate fit TabPFN
-ONCE on the cleaned train and read off ALL proba-based signals (acc/F1/conf/margin on noisy + clean
-val) plus one RF fit and the (cheap) prior-distance. Every reward arm then = argmax of its own signal
-over the SAME candidate set (a fair comparison), and winners are deployed on TabPFN to the clean test.
-(The earlier per-arm greedy was ~10x slower; `iterrf` imputer dropped as the heaviest, marginal op.)
-
-Arms (signal in parens), all deployed on TabPFN, scored on CLEAN test:
-  R3 (rf-acc) · R7acc (TabPFN acc) · R7F1 (TabPFN macro-F1) · R7conf (confidence, label-free)
-  · R7margin (margin, label-free) · R7prior (-(M2+M3) prior-distance, label-free)
-  · oracle (acc on TRUE val) · oracleF1 (F1 on TRUE val)   [ceilings]
-
-Usage: PYTHONPATH=src:experiments python experiments/run_noise_robust_rich.py \
-          --datasets blood_transfusion credit_g hepatitis --rates 0.0 0.1 0.2 0.35 --seeds 42 1 2 3 4 5 6 7
-"""
 from __future__ import annotations
 import argparse, sys
 from pathlib import Path
@@ -34,7 +14,7 @@ import run_c2_tfm_reward_nested as G
 import run_prior_distance as PD
 from run_corruption_sweep import inject_label_noise
 
-R.IMPUTE = [x for x in R.IMPUTE if x != "iterrf"]          # drop the heaviest (RandomForest) imputer
+R.IMPUTE = [x for x in R.IMPUTE if x != "iterrf"]
 ARMS = {"R3": "rf", "R3F1": "rf_f1", "R7acc": "acc_noisy", "R7F1": "f1_noisy", "R7conf": "conf",
         "R7margin": "margin", "R7prior": "prior", "oracle": "acc_clean", "oracleF1": "f1_clean"}
 K_CANDIDATES = 16
@@ -81,7 +61,6 @@ def sample_candidates(seed):
 
 
 def eval_val(cand, X_sel, y_sel, X_val, y_vn, y_vc, seed):
-    """One cleaned-train fit → all selection signals on inner-val. None if invalid."""
     out = apply_rich(X_sel, y_sel, X_val, cand[0], cand[1], seed)
     if out is None or len(out[0]) == 0:
         return None
@@ -97,7 +76,7 @@ def eval_val(cand, X_sel, y_sel, X_val, y_vn, y_vc, seed):
         clf = RandomForestClassifier(n_estimators=100, random_state=seed, n_jobs=-1).fit(tr.values, ytr2.values)
         yp_rf = clf.predict(val.values)
         d["rf"] = accuracy_score(y_vn.values, yp_rf)
-        d["rf_f1"] = f1_score(y_vn.values, yp_rf, average="macro")   # R3F1 control: RF selecting by F1
+        d["rf_f1"] = f1_score(y_vn.values, yp_rf, average="macro")
     except Exception:
         d["rf"] = d["rf_f1"] = -np.inf
     try:

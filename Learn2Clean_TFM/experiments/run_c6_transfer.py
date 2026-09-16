@@ -1,56 +1,3 @@
-"""
-experiments/run_c6_transfer.py
-
-C6 — Transfer Learning / Pre-trained Policy Experiment
-========================================================
-Claim: "PPO policy pre-trained on 7 datasets achieves within 5% of fully-trained
-policy reward on 3 held-out datasets in ≤2K fine-tuning steps."
-
-Design
-------
-Phase 1 — Pre-training:
-    Train one PPO policy per training dataset (7 datasets) for N_TRAIN steps
-    using MultiObjectiveReward (RF evaluator).  Save checkpoints to
-    checkpoint_dir/<dataset>_ppo.zip.
-
-Phase 2 — Average pre-trained policy:
-    For each held-out dataset, try to load a compatible pre-trained checkpoint
-    via PretrainedPolicyLoader.  The loader transfers matching weight tensors;
-    mismatching shapes are skipped.
-
-Phase 3 — Fine-tuning vs. scratch:
-    For each held-out dataset:
-        a) Fine-tune the pre-trained policy for N_FINETUNE steps; record reward
-           every EVAL_INTERVAL steps.
-        b) Train a fresh (random-init) policy for N_FINETUNE steps (scratch
-           baseline); record reward every EVAL_INTERVAL steps.
-    "Within 5%" criterion: (scratch_reward - finetune_reward) / |scratch_reward|
-        < 0.05 at step 2000, i.e. fine-tune reaches parity within 2K steps.
-
-Hydra config
-------------
-Expose N_TRAIN, N_FINETUNE, N_SEEDS, checkpoint_dir as Hydra overrides.
-Example:
-  PYTHONPATH=src python experiments/run_c6_transfer.py \
-      n_train=30000 n_finetune=5000 checkpoint_dir=outputs/c6_ckpts
-
-Dependency check
-----------------
-torch and stable_baselines3 must be installed:
-  pip install torch stable-baselines3
-
-Outputs
--------
-  outputs/paper_ready/c6_transfer/
-    training_curves.csv   — (dataset, mode, step, reward)
-    c6_transfer.tex       — LaTeX table for the paper
-
-Usage
------
-  PYTHONPATH=src python experiments/run_c6_transfer.py
-  PYTHONPATH=src python experiments/run_c6_transfer.py --n-train 50000 --n-finetune 5000
-  PYTHONPATH=src python experiments/run_c6_transfer.py --output-dir /tmp/c6 --seed 1
-"""
 
 from __future__ import annotations
 
@@ -66,12 +13,9 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 
-# ---------------------------------------------------------------------------
-# Dependency check — torch + stable_baselines3
-# ---------------------------------------------------------------------------
 try:
-    import torch  # noqa: F401
-    import stable_baselines3  # noqa: F401
+    import torch
+    import stable_baselines3
     TORCH_SB3_AVAILABLE = True
 except ImportError:
     TORCH_SB3_AVAILABLE = False
@@ -87,9 +31,6 @@ if not TORCH_SB3_AVAILABLE:
     )
     sys.exit("Install torch and stable-baselines3 first")
 
-# ---------------------------------------------------------------------------
-# Local imports (after dependency check)
-# ---------------------------------------------------------------------------
 sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
 
 from stable_baselines3 import PPO
@@ -110,41 +51,28 @@ from learn2clean_v3.transfer import PretrainedPolicyLoader
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s | %(message)s")
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Hydra-style config dataclass (used both as CLI defaults and Hydra config node)
-# ---------------------------------------------------------------------------
 
 @dataclass
 class C6Config:
-    """Hydra config for C6 transfer experiment.
-
-    All fields are exposed as CLI arguments and as Hydra dot-notation overrides:
-        python run_c6_transfer.py n_train=50000 checkpoint_dir=my_ckpts
-    """
-    # Training datasets (7)
     train_datasets: List[str] = field(default_factory=lambda: [
         "hepatitis", "heart_statlog", "ionosphere",
         "blood_transfusion", "diabetes", "credit_g", "kr_vs_kp",
     ])
-    # Held-out datasets (3)
     held_out_datasets: List[str] = field(default_factory=lambda: [
         "phoneme", "adult", "bank_marketing",
     ])
-    n_train: int = 20_000        # PPO steps per training dataset (pre-train)
-    n_finetune: int = 5_000      # fine-tune steps on each held-out dataset
-    n_seeds: int = 1             # number of random seeds (set >1 for CIs)
-    eval_interval: int = 100     # record reward every N steps
-    mcar_rate: float = 0.15      # MCAR injection for all datasets
+    n_train: int = 20_000
+    n_finetune: int = 5_000
+    n_seeds: int = 1
+    eval_interval: int = 100
+    mcar_rate: float = 0.15
     checkpoint_dir: str = "outputs/c6_checkpoints"
     output_dir: str = "outputs/paper_ready/c6_transfer"
-    seed: int = 42               # base random seed
-    parity_threshold: float = 0.05   # "within 5%" criterion
-    parity_step: int = 2_000         # check parity at this fine-tune step
+    seed: int = 42
+    parity_threshold: float = 0.05
+    parity_step: int = 2_000
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 def build_actions() -> List[DataFrameAction]:
     return [
@@ -164,7 +92,6 @@ def build_env(
     seed: int,
     eval_metric: str,
 ) -> SequentialCleaningEnvV3:
-    """Load a dataset, inject MCAR, return a SequentialCleaningEnvV3."""
     X, y, spec = load_dataset(ds_name, use_cache=True)
     profile = ErrorProfile("mcar", rate=mcar_rate, seed=seed)
     X_dirty, y_dirty = apply_error_profile(X, y, profile)
@@ -186,22 +113,17 @@ def build_env(
     return env
 
 
-# ---------------------------------------------------------------------------
-# Reward-recording callback
-# ---------------------------------------------------------------------------
 
 class RewardRecorderCallback(BaseCallback):
-    """Records cumulative mean episode reward at fixed step intervals."""
 
     def __init__(self, eval_interval: int, verbose: int = 0) -> None:
         super().__init__(verbose=verbose)
         self.eval_interval = eval_interval
-        self.records: List[Tuple[int, float]] = []   # (step, mean_reward)
+        self.records: List[Tuple[int, float]] = []
         self._episode_rewards: List[float] = []
         self._current_episode_reward: float = 0.0
 
     def _on_step(self) -> bool:
-        # Accumulate reward from the locals dict provided by SB3
         reward = self.locals.get("rewards", [0.0])
         if hasattr(reward, "__len__"):
             self._current_episode_reward += float(reward[0])
@@ -225,9 +147,6 @@ class RewardRecorderCallback(BaseCallback):
         return True
 
 
-# ---------------------------------------------------------------------------
-# Phase 1 — Pre-training
-# ---------------------------------------------------------------------------
 
 def pretrain_on_dataset(
     ds_name: str,
@@ -235,7 +154,6 @@ def pretrain_on_dataset(
     ckpt_dir: Path,
     seed: int,
 ) -> Path:
-    """Train a PPO policy on ds_name for cfg.n_train steps; save checkpoint."""
     try:
         _, _, spec = load_dataset(ds_name, use_cache=True)
         eval_metric = spec.eval_metric
@@ -275,9 +193,6 @@ def pretrain_on_dataset(
     return ckpt_path
 
 
-# ---------------------------------------------------------------------------
-# Phase 3 — Fine-tuning and scratch baseline
-# ---------------------------------------------------------------------------
 
 def train_policy(
     ds_name: str,
@@ -286,11 +201,6 @@ def train_policy(
     seed: int,
     pretrained_ckpt: Optional[Path] = None,
 ) -> List[Tuple[int, float]]:
-    """
-    Train (or fine-tune) a PPO policy on ds_name.
-    If pretrained_ckpt is provided, weights are transferred via PretrainedPolicyLoader.
-    Returns list of (step, mean_reward) tuples.
-    """
     try:
         _, _, spec = load_dataset(ds_name, use_cache=True)
         eval_metric = spec.eval_metric
@@ -309,7 +219,7 @@ def train_policy(
                 algorithm_class=PPO,
                 verbose=0,
                 seed=seed,
-                learning_rate=1e-4,   # lower LR for fine-tuning
+                learning_rate=1e-4,
                 n_steps=512,
                 batch_size=64,
                 n_epochs=10,
@@ -334,12 +244,8 @@ def train_policy(
     return callback.records
 
 
-# ---------------------------------------------------------------------------
-# LaTeX table
-# ---------------------------------------------------------------------------
 
 def make_latex_table_c6(curves_df: pd.DataFrame, parity_step: int, threshold: float) -> str:
-    """Build C6 LaTeX table: reward at parity_step for finetune vs. scratch."""
     at_step = curves_df[curves_df["step"] <= parity_step].groupby(
         ["dataset", "mode"]
     )["reward"].last().reset_index()
@@ -391,9 +297,6 @@ def make_latex_table_c6(curves_df: pd.DataFrame, parity_step: int, threshold: fl
     return "\n".join(lines)
 
 
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
 
 def main(cfg: C6Config) -> None:
     ckpt_dir = Path(cfg.checkpoint_dir)
@@ -412,7 +315,6 @@ def main(cfg: C6Config) -> None:
     all_curves: List[Dict] = []
     t0_total = time.time()
 
-    # ── Phase 1: Pre-train on each training dataset ──────────────────────────
     print(f"\n{'='*60}")
     print("Phase 1 — Pre-training")
     ckpt_paths: Dict[str, Path] = {}
@@ -426,25 +328,20 @@ def main(cfg: C6Config) -> None:
             except Exception as exc:
                 print(f"    [ERROR] Pre-training failed on {ds_name}: {exc}")
 
-    # ── Phase 2 + 3: Fine-tune and scratch on held-out datasets ─────────────
     print(f"\n{'='*60}")
     print("Phase 2+3 — Fine-tuning and scratch training on held-out datasets")
 
     for ds_name in cfg.held_out_datasets:
         print(f"\n  Held-out dataset: {ds_name}")
 
-        # Pick a compatible pre-trained checkpoint (use first available)
         pretrained_ckpt: Optional[Path] = None
         if ckpt_paths:
-            # Prefer the checkpoint from the most similar dataset by name proximity
-            # (simple heuristic: pick first available)
             pretrained_ckpt = next(iter(ckpt_paths.values()))
             print(f"    Using pre-trained checkpoint: {pretrained_ckpt}")
 
         for s in range(cfg.n_seeds):
             seed = cfg.seed + s
 
-            # Fine-tune
             print(f"    [seed={seed}] Fine-tuning for {cfg.n_finetune} steps …")
             t0 = time.time()
             try:
@@ -465,7 +362,6 @@ def main(cfg: C6Config) -> None:
             except Exception as exc:
                 print(f"    [ERROR] Fine-tuning failed: {exc}")
 
-            # Scratch baseline
             print(f"    [seed={seed}] Training from scratch for {cfg.n_finetune} steps …")
             t0 = time.time()
             try:
@@ -486,7 +382,6 @@ def main(cfg: C6Config) -> None:
             except Exception as exc:
                 print(f"    [ERROR] Scratch training failed: {exc}")
 
-    # ── Save ──────────────────────────────────────────────────────────────────
     if not all_curves:
         print("\nNo training curves to save.")
         return
@@ -494,10 +389,8 @@ def main(cfg: C6Config) -> None:
     curves_df = pd.DataFrame(all_curves)
     curves_df.to_csv(out_dir / "training_curves.csv", index=False)
 
-    # Aggregate across seeds
     agg_curves = curves_df.groupby(["dataset", "mode", "step"])["reward"].mean().reset_index()
 
-    # Parity analysis
     print(f"\n{'='*60}")
     print(f"C6 — Reward parity at step {cfg.parity_step}:")
     at_step = (
@@ -526,7 +419,6 @@ def main(cfg: C6Config) -> None:
 
     print(f"\n  Parity (≤{cfg.parity_threshold:.0%} gap): {n_within}/{total} held-out datasets")
 
-    # LaTeX
     latex = make_latex_table_c6(agg_curves, cfg.parity_step, cfg.parity_threshold)
     (out_dir / "c6_transfer.tex").write_text(latex)
 
@@ -534,13 +426,9 @@ def main(cfg: C6Config) -> None:
     print(f"Total time: {time.time() - t0_total:.1f}s")
 
 
-# ---------------------------------------------------------------------------
-# Hydra config writer
-# ---------------------------------------------------------------------------
 
 def write_hydra_config(cfg: C6Config, conf_dir: Path) -> None:
-    """Write default config to conf/c6_transfer.yaml (Hydra convention)."""
-    import yaml  # stdlib-safe: yaml.safe_dump is always OK
+    import yaml
 
     conf_dir.mkdir(parents=True, exist_ok=True)
     config_dict = {
@@ -563,7 +451,6 @@ def write_hydra_config(cfg: C6Config, conf_dir: Path) -> None:
     print(f"Default config written to {conf_path}")
 
 
-# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

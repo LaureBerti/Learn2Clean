@@ -1,19 +1,3 @@
-"""
-experiments/merge_c2_allmetrics_8seed.py
-
-Merge the two parallel C2 all-metrics runs into one 8-seed table:
-  * c2_allmetrics_4seed        -> seeds 42, 1, 2, 3
-  * c2_allmetrics_seeds4567    -> seeds 4, 5, 6, 7
-
-Both were produced by the SAME run_c2_tfm_reward_nested.py (fixed random_state=seed),
-so concatenating per-seed rows and re-aggregating is exact.
-
-Usage:
-  python experiments/merge_c2_allmetrics_8seed.py \
-      --a outputs/paper_ready/c2_allmetrics_4seed/results_per_seed.csv \
-      --b outputs/paper_ready/c2_allmetrics_seeds4567/results_per_seed.csv \
-      --out outputs/paper_ready/c2_allmetrics_8seed
-"""
 from __future__ import annotations
 import argparse
 from pathlib import Path

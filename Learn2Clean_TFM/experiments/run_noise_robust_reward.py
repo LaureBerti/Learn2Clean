@@ -1,26 +1,3 @@
-"""
-experiments/run_noise_robust_reward.py
-
-Tests the most promising R7 improvement (selectability finding, dossier ⑧): under LABEL NOISE the
-validation labels are themselves corrupted, so selecting by validation accuracy cannot reward the
-label-cleaning operator. We test a LABEL-FREE, noise-robust selection signal — TabPFN predictive
-CONFIDENCE on the inner-val — which a clean training context should sharpen, letting it pick the
-mislabel-remover that accuracy-based rewards miss.
-
-Selection arms (action pool = BASE 7 ops + LabelCleaner), all DEPLOYED on TabPFN, evaluated on a
-SACRED CLEAN test (true labels):
-  no_clean : identity
-  R3       : argmax RF accuracy on (noisy) inner-val
-  R7acc    : argmax TabPFN accuracy on (noisy) inner-val          <- current reward
-  R7conf   : argmax TabPFN mean-confidence on inner-val (LABEL-FREE)  <- proposed noise-robust reward
-  oracle   : argmax TabPFN accuracy on CLEAN inner-val (true labels)  <- upper bound (headroom)
-
-Hypothesis: under label noise, R7conf > R7acc ≈ R3 and selects LabelCleaner more often, approaching
-the oracle — i.e. a noise-robust reward unlocks the one regime where model-awareness should matter.
-
-Usage:  PYTHONPATH=src:experiments python experiments/run_noise_robust_reward.py \
-            --datasets hepatitis diabetes ionosphere credit_g --rates 0.0 0.1 0.2 0.35 --seeds 42 1 2
-"""
 from __future__ import annotations
 import argparse, sys
 from pathlib import Path
@@ -34,11 +11,10 @@ sys.path.insert(0, str(ROOT / "src")); sys.path.insert(0, str(ROOT / "experiment
 import run_c2_tfm_reward_nested as G
 from run_corruption_sweep import LabelCleaner, inject_label_noise, BASE, EXT, EXT_GROUP, enum_pipes
 
-CLEAN_VAL = {}   # cache true-label inner-val per (dataset,seed) for the oracle arm
+CLEAN_VAL = {}
 
 
 def _tab_proba(Xc, y, X_val, seed):
-    """TabPFN fit on cleaned (Xc,y); return (pred,le), mean_confidence, mean_margin on X_val."""
     Xtr, ytr, le = G._encode_align(Xc, y)
     shared = [c for c in Xc.select_dtypes(include="number").columns]
     Xv = X_val[[c for c in shared if c in X_val.columns]].values.astype(float)
@@ -54,7 +30,6 @@ def _tab_proba(Xc, y, X_val, seed):
 
 
 def _score(seq, X_sel, y_sel, X_val, y_val_noisy, y_val_clean, seed, kind):
-    """Selection score of pipeline seq under the chosen signal."""
     Xc = G.apply_pipeline(X_sel, y_sel, seq, EXT)
     if Xc is None or len(Xc) == 0:
         return -np.inf
@@ -74,8 +49,8 @@ def _score(seq, X_sel, y_sel, X_val, y_val_noisy, y_val_clean, seed, kind):
         return -np.inf
     pred, le = out
     if kind == "conf":
-        return conf                                              # LABEL-FREE
-    ref = y_val_clean if kind == "acc_clean" else y_val_noisy    # accuracy vs noisy or clean labels
+        return conf
+    ref = y_val_clean if kind == "acc_clean" else y_val_noisy
     try:
         return accuracy_score(le.transform(ref.values), pred)
     except Exception:
@@ -92,7 +67,6 @@ def select(pipes, X_sel, y_sel, X_val, y_vn, y_vc, seed, kind):
 
 
 def deploy(seq, X_sel, y_sel, X_test, y_test_clean, seed):
-    """Apply seq to train, fit TabPFN, score on the CLEAN sacred test."""
     Xc = G.apply_pipeline(X_sel, y_sel, seq, EXT)
     if Xc is None or len(Xc) == 0:
         return np.nan, np.nan
@@ -117,14 +91,12 @@ def run_one(name, rate, seed, pipes):
     if len(X) > G.SUBSAMPLE_CAP:
         X, _, y, _ = train_test_split(X, y, train_size=G.SUBSAMPLE_CAP, random_state=0, stratify=y)
         X, y = X.reset_index(drop=True), y.reset_index(drop=True)
-    # sacred CLEAN test (true labels); training pool then gets label noise
     X_tr, X_test, y_tr, y_test = train_test_split(X, y, test_size=0.2, random_state=seed, stratify=y)
     X_tr, y_tr = X_tr.reset_index(drop=True), y_tr.reset_index(drop=True)
     X_test, y_test = X_test.reset_index(drop=True), y_test.reset_index(drop=True)
     X_sel, X_val, y_sel_c, y_val_c = train_test_split(X_tr, y_tr, test_size=0.25, random_state=seed, stratify=y_tr)
     X_sel, X_val = X_sel.reset_index(drop=True), X_val.reset_index(drop=True)
     y_sel_c, y_val_c = y_sel_c.reset_index(drop=True), y_val_c.reset_index(drop=True)
-    # inject label noise on the (selection) training + its validation — the realistic selectability case
     y_sel = inject_label_noise(y_sel_c, rate, seed)
     y_val_n = inject_label_noise(y_val_c, rate, seed + 1)
 

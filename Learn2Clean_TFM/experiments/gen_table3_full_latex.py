@@ -1,9 +1,3 @@
-"""Full held-out protocol 8-seed Table 3: 6 methods x 10 datasets, per-metric panels,
-each cell mean+-std across seeds, bold = best per dataset/panel, Seeds column.
-Sources:
-  baselines_t3_8seed/baselines_per_seed.csv  -> B-NC/SP/SC/RAND
-  c2_allmetrics_8seed/results_per_seed.csv    -> B-greedy-RF / B-greedy-TFM
-Emits venue (Acc/F1/ECE) and extended (Acc/F1/Prec/Rec/ECE) LaTeX."""
 import numpy as np, pandas as pd
 
 BL = pd.read_csv("outputs/paper_ready/baselines_t3_8seed/baselines_per_seed.csv")
@@ -13,7 +7,6 @@ ORDER = [("hepatitis","hepatitis"),("heart_statlog","heart-statlog"),
          ("ionosphere","ionosphere"),("blood_transfusion","blood-transfusion"),
          ("diabetes","diabetes"),("credit_g","credit-g"),("kr_vs_kp","kr-vs-kp"),
          ("phoneme","phoneme"),("adult","adult"),("bank_marketing","bank-marketing")]
-# (display method, source df, column-prefix)
 METHODS = [(r"\textbf{B-NC}",  BL, "b0_none"),
            (r"\textbf{B-SP}",  BL, "b1_standard"),
            (r"\textbf{B-SC}",  BL, "b2_full"),
@@ -28,7 +21,6 @@ def stat(df, prefix, ds, metric):
 
 
 def panel(metric, lower_better, title, dec=3):
-    # per-dataset means for bolding
     means = {ds: {mi: stat(df, pre, dso, metric)[0] for mi, (_, df, pre) in enumerate(METHODS)}
              for dso, ds in ORDER}
     best = {ds: (min if lower_better else max)(range(len(METHODS)), key=lambda i: means[ds][i])

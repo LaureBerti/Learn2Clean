@@ -1,4 +1,3 @@
-"""Core type aliases for Learn2Clean V3."""
 
 from __future__ import annotations
 
@@ -8,9 +7,6 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import numpy as np
 import pandas as pd
 
-# ---------------------------------------------------------------------------
-# Base data types (unchanged from V2)
-# ---------------------------------------------------------------------------
 
 Features = pd.DataFrame
 OptionalFeatures = Optional[Features]
@@ -22,15 +18,11 @@ RewardFunction = Callable[[Features, OptionalTarget], float]
 MetricFunction = Callable[[Target, Target], float]
 MetricType = Union[str, MetricFunction]
 
-# ---------------------------------------------------------------------------
-# V3 additions
-# ---------------------------------------------------------------------------
 
 ActionIndex = int
 ActionHistory = List[ActionIndex]
 ObservationVector = np.ndarray
 
-# Reward delta produced by ExplainableReward
 @dataclass
 class RewardDelta:
     step: int
@@ -42,7 +34,6 @@ class RewardDelta:
     meta: Dict[str, Any] = field(default_factory=dict)
 
 
-# Multi-objective reward components
 @dataclass
 class RewardComponents:
     accuracy: float = 0.0
@@ -52,19 +43,16 @@ class RewardComponents:
     total: float = 0.0
 
 
-# Parameterized action spec
 @dataclass
 class ParamSpec:
-    """Specification for a single hyperparameter of a ParameterizedAction."""
     name: str
-    dtype: str            # "float", "int", or "categorical"
+    dtype: str
     low: Optional[float] = None
     high: Optional[float] = None
     choices: Optional[List[Any]] = None
     default: Any = None
 
 
-# Offline RL transition
 @dataclass
 class Transition:
     obs: ObservationVector
@@ -75,7 +63,6 @@ class Transition:
     info: Dict[str, Any] = field(default_factory=dict)
 
 
-# Benchmark results
 @dataclass
 class BenchmarkEntry:
     reward_fn_name: str

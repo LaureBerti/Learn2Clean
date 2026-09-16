@@ -1,55 +1,3 @@
-"""
-experiments/run_c2_tfm_reward_nested.py
-
-C2 — TFM-Aware Reward with a HELD-OUT PROTOCOL nested evaluation protocol
-============================================================================
-This is the replacement for ``run_c2_tfm_reward.py``. It exists to
-close the selection-leakage concern in the earlier single-split protocol:
-
-    "If the same held-out split is used both to select/optimize cleaning pipelines
-     and to report final performance, this leads to selection leakage and
-     invalidates the empirical results and claims."
-
-Root cause in the original script
-----------------------------------
-``build_tabpfn_cache`` scored every pipeline on ONE seed-42 train/test split, then
-``best_from_tfm_cache`` selected the argmax of that cached accuracy, and the SAME
-cached number was reported as the final result (run_c2_tfm_reward.py:522,541,542).
-Selection metric == reported metric == same split → optimistic selection bias.
-
-held-out protocol implemented here
------------------------------------
-For each dataset and each random seed:
-
-  1. Inject MCAR 15% on the full dataset (seed).
-  2. OUTER split (stratified, fixed seed): D_sel (80%) and D_test (20%).
-     D_test is NEVER seen by any selection or reward computation.
-  3. SELECTION — operates only on D_sel:
-       * clean D_sel with each candidate pipeline;
-       * score each cleaned D_sel with an INNER train/val split (TabPFN for the
-         TFM mode, cross-validated RandomForest for the RF mode);
-       * pick the argmax pipeline per mode.
-  4. FINAL EVALUATION — reported on the untouched D_test:
-       * refit the selected cleaning transforms on D_sel (train-fitted imputation
-         and scaling), apply them to D_test WITHOUT deleting test rows
-         (outlier-removal / dedup only shape the training context, never the test);
-       * fit TabPFN on the cleaned D_sel context, predict on the prepared D_test;
-       * report accuracy and ECE on D_test only.
-
-The number reported in step 4 is computed on data that played no role in selecting
-the pipeline — this is the separation R3 and the AC asked for.
-
-Multi-seed
-----------
-Pass ``--seeds 42 1 2 3 4`` to repeat the whole protocol over seeds and aggregate
-mean ± 95% CI per dataset.
-
-Usage
------
-  PYTHONPATH=src python experiments/run_c2_tfm_reward_nested.py
-  PYTHONPATH=src python experiments/run_c2_tfm_reward_nested.py --seeds 42 1 2 3 4
-  PYTHONPATH=src python experiments/run_c2_tfm_reward_nested.py --datasets hepatitis ionosphere --seeds 42
-"""
 
 from __future__ import annotations
 
@@ -71,11 +19,8 @@ from sklearn.metrics import (accuracy_score, f1_score, precision_score,
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler, StandardScaler
 
-# --------------------------------------------------------------------------- #
-# Dependency check
-# --------------------------------------------------------------------------- #
 try:
-    import tabpfn as _tabpfn_check  # noqa: F401
+    import tabpfn as _tabpfn_check
     TABPFN_AVAILABLE = True
 except ImportError:
     TABPFN_AVAILABLE = False
@@ -98,16 +43,13 @@ from learn2clean_v3.rewards import MultiObjectiveReward
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s | %(message)s")
 logger = logging.getLogger(__name__)
 
-# --------------------------------------------------------------------------- #
-# Constants
-# --------------------------------------------------------------------------- #
 NATURAL_MISSING: frozenset = frozenset({"hepatitis", "diabetes", "adult"})
 MCAR_RATE: float = 0.15
 N_BINS_ECE: int = 10
-OUTER_TEST_SIZE: float = 0.20          # untouched final-test fraction
-INNER_VAL_SIZE: float = 0.25           # validation fraction WITHIN D_sel (selection only)
-CONTEXT_CAP: int = 1024                # max TabPFN training-context rows
-SUBSAMPLE_CAP: int = 4096              # cap very large datasets before splitting
+OUTER_TEST_SIZE: float = 0.20
+INNER_VAL_SIZE: float = 0.25
+CONTEXT_CAP: int = 1024
+SUBSAMPLE_CAP: int = 4096
 
 ACTION_GROUPS: Dict[int, str] = {0: "impute", 1: "impute", 2: "impute",
                                  3: "outlier", 4: "outlier", 5: "scale", 6: "scale"}
@@ -116,9 +58,6 @@ ACTION_LABELS: Dict[int, str] = {0: "impute(mean)", 1: "impute(median)", 2: "imp
                                  5: "scale(minmax)", 6: "scale(zscore)"}
 
 
-# --------------------------------------------------------------------------- #
-# Pipeline enumeration / application (training context only)
-# --------------------------------------------------------------------------- #
 def build_actions() -> List[DataFrameAction]:
     return [
         ParameterizedImputer(strategy="mean"),
@@ -161,7 +100,6 @@ def pipeline_label(pipeline: Tuple[int, ...]) -> str:
 
 def apply_pipeline(X: pd.DataFrame, y: pd.Series, pipeline: Tuple[int, ...],
                    actions: List[DataFrameAction]) -> Optional[pd.DataFrame]:
-    """Apply a sequence of actions to the TRAINING context. Returns None on failure."""
     X_out = X.copy()
     for idx in pipeline:
         try:
@@ -172,12 +110,6 @@ def apply_pipeline(X: pd.DataFrame, y: pd.Series, pipeline: Tuple[int, ...],
     return X_out
 
 
-# --------------------------------------------------------------------------- #
-# Held-out protocol TEST preparation: fit transforms on D_sel, apply to D_test.
-# Row-removing actions (outlier, dedup) are NOT applied to the test set — they
-# only shape the training context. Imputation and scaling are fit on the training
-# context and applied to the test features (TabPFN also normalises internally).
-# --------------------------------------------------------------------------- #
 def prepare_test_like_train(
     X_sel: pd.DataFrame, X_test: pd.DataFrame, pipeline: Tuple[int, ...],
 ) -> pd.DataFrame:
@@ -187,9 +119,6 @@ def prepare_test_like_train(
     sel, test = sel[shared], test[shared]
 
     for idx in pipeline:
-        # .get() tolerates extended action spaces (e.g. the corruption sweep's label-cleaner
-        # at idx 7): any action that is neither impute nor scale is row-removing and applies to
-        # the TRAINING context only, so it falls through and is correctly skipped on the test set.
         label = ACTION_LABELS.get(idx, "")
         if label.startswith("impute"):
             if "knn" in label:
@@ -206,13 +135,9 @@ def prepare_test_like_train(
             scaler.fit(sel.values)
             sel = pd.DataFrame(scaler.transform(sel.values), columns=shared, index=sel.index)
             test = pd.DataFrame(scaler.transform(test.values), columns=shared, index=test.index)
-        # outlier(*) → row removal: training-context only, skip on test
     return test
 
 
-# --------------------------------------------------------------------------- #
-# TabPFN helpers
-# --------------------------------------------------------------------------- #
 def _encode_align(X: pd.DataFrame, y: pd.Series) -> Tuple[np.ndarray, np.ndarray, LabelEncoder]:
     numeric = X.select_dtypes(include="number")
     try:
@@ -225,8 +150,6 @@ def _encode_align(X: pd.DataFrame, y: pd.Series) -> Tuple[np.ndarray, np.ndarray
 
 
 def _tabpfn_cfg() -> dict:
-    """TabPFN configuration, env-overridable for the tuning ablation (defaults match
-    the D1 run, so behaviour is unchanged unless these env vars are set)."""
     import os
     return {
         "n_estimators": int(os.environ.get("TABPFN_N_ESTIMATORS", "8")),
@@ -247,7 +170,6 @@ def _cap_context(X: np.ndarray, y: np.ndarray, seed: int, cap: Optional[int] = N
 
 
 def _tabpfn_fit_predict(Xtr, ytr, Xte, seed: int):
-    """Return (y_pred, y_prob) from a TabPFN v2 fit on (Xtr,ytr), predict on Xte."""
     from tabpfn import TabPFNClassifier
     cfg = _tabpfn_cfg()
     Xtr, ytr = _cap_context(Xtr, ytr, seed, cfg["ctx_cap"])
@@ -258,7 +180,7 @@ def _tabpfn_fit_predict(Xtr, ytr, Xte, seed: int):
             n_estimators=cfg["n_estimators"],
             softmax_temperature=cfg["softmax_temperature"],
             balance_probabilities=cfg["balance_probabilities"],
-            random_state=seed,   # fixed → reproducible; removes global-RNG dependence
+            random_state=seed,
         )
         clf.fit(Xtr, ytr)
         y_prob = clf.predict_proba(Xte)
@@ -287,8 +209,6 @@ def compute_ece(y_true: np.ndarray, y_prob: np.ndarray, n_bins: int = N_BINS_ECE
 
 
 def inner_val_tabpfn_acc(X_clean: pd.DataFrame, y: pd.Series, seed: int) -> float:
-    """SELECTION score: TabPFN accuracy via an inner train/val split WITHIN D_sel.
-    Never touches the outer test set."""
     X_arr, y_enc, _ = _encode_align(X_clean, y)
     if len(y_enc) < 20 or len(np.unique(y_enc)) < 2:
         return float("nan")
@@ -311,8 +231,6 @@ def final_test_tabpfn(
     X_sel_clean: pd.DataFrame, y_sel: pd.Series,
     X_test_prepared: pd.DataFrame, y_test: pd.Series, seed: int,
 ) -> Tuple[float, float, float, float, float]:
-    """FINAL metric: fit TabPFN on cleaned D_sel context, evaluate on untouched D_test.
-    Returns (accuracy, ECE, macro-F1, macro-precision, macro-recall)."""
     nan = (float("nan"),) * 5
     Xtr, ytr, le = _encode_align(X_sel_clean, y_sel)
     shared = [c for c in X_sel_clean.select_dtypes(include="number").columns
@@ -335,14 +253,10 @@ def final_test_tabpfn(
         return nan
 
 
-# --------------------------------------------------------------------------- #
-# Selection (D_sel only)
-# --------------------------------------------------------------------------- #
 def select_best(
     X_sel: pd.DataFrame, y_sel: pd.Series, pipelines, actions, seed: int,
     rf_reward: MultiObjectiveReward,
 ) -> Tuple[Tuple[int, ...], Tuple[int, ...]]:
-    """Return (best_rf_pipeline, best_tfm_pipeline) selected on D_sel only."""
     n0 = len(X_sel)
     best_rf, best_rf_score = (), -np.inf
     best_tfm, best_tfm_score = (), -np.inf
@@ -353,7 +267,6 @@ def select_best(
         if X_clean is None or len(X_clean) == 0:
             continue
 
-        # RF mode: MultiObjectiveReward computes its own internal CV on D_sel (held-out protocol wrt test)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             rf_reward.reset(X_sel, y_sel)
@@ -361,7 +274,6 @@ def select_best(
         if np.isfinite(rf_score) and rf_score > best_rf_score:
             best_rf_score, best_rf = rf_score, seq
 
-        # TFM mode: inner-val TabPFN accuracy + retention + quality, all on D_sel
         acc = inner_val_tabpfn_acc(X_clean, y_sel, seed)
         if not np.isfinite(acc):
             continue
@@ -376,9 +288,6 @@ def select_best(
     return best_rf, best_tfm
 
 
-# --------------------------------------------------------------------------- #
-# Main
-# --------------------------------------------------------------------------- #
 def run_one(ds_name: str, seed: int, pipelines, actions) -> Optional[Dict]:
     try:
         X, y, spec = load_dataset(ds_name, use_cache=True)
@@ -386,7 +295,6 @@ def run_one(ds_name: str, seed: int, pipelines, actions) -> Optional[Dict]:
         print(f"  [SKIP] {ds_name}: load failed: {exc}")
         return None
 
-    # Subsample very large datasets before everything (stratified, seeded)
     if len(X) > SUBSAMPLE_CAP:
         Xs, _, ys, _ = train_test_split(X, y, train_size=SUBSAMPLE_CAP,
                                         random_state=seed, stratify=y)
@@ -395,7 +303,6 @@ def run_one(ds_name: str, seed: int, pipelines, actions) -> Optional[Dict]:
     mcar = ErrorProfile("mcar", rate=MCAR_RATE, seed=seed)
     X_dirty, y_dirty = apply_error_profile(X, y, mcar)
 
-    # OUTER split — D_test is untouched by selection
     try:
         X_sel, X_test, y_sel, y_test = train_test_split(
             X_dirty, y_dirty, test_size=OUTER_TEST_SIZE,
@@ -434,7 +341,6 @@ def run_one(ds_name: str, seed: int, pipelines, actions) -> Optional[Dict]:
 
 
 def aggregate(df: pd.DataFrame) -> pd.DataFrame:
-    """Mean ± 95% CI per dataset across seeds."""
     rows = []
     for ds, g in df.groupby("dataset"):
         row = {"dataset": ds, "n_seeds": len(g)}
@@ -475,7 +381,6 @@ def main(dataset_names=None, output_dir=None, seeds=(42,), max_pipelines=20) -> 
                 print(f"   rf  acc={r['rf_acc']:.4f} f1={r['rf_f1']:.4f} ece={r['rf_ece']:.4f}  |  "
                       f"tfm acc={r['tfm_acc']:.4f} f1={r['tfm_f1']:.4f} ece={r['tfm_ece']:.4f}  "
                       f"({time.time()-ts:.0f}s)", flush=True)
-            # incremental save (long CPU run — never lose progress)
             pd.DataFrame(rows).to_csv(out_dir / "results_per_seed.csv", index=False)
 
     if not rows:
@@ -485,7 +390,6 @@ def main(dataset_names=None, output_dir=None, seeds=(42,), max_pipelines=20) -> 
     agg = aggregate(df)
     agg.to_csv(out_dir / "results_aggregated.csv", index=False)
 
-    # Paired Wilcoxon on per-dataset mean accuracy (TFM > RF)
     pivot = agg.set_index("dataset")
     rf = pivot["rf_acc_mean"].dropna(); tfm = pivot["tfm_acc_mean"].dropna()
     shared = rf.index.intersection(tfm.index)

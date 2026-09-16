@@ -1,28 +1,3 @@
-"""
-experiments/run_tfm_levers_nested.py
-
-TFM-reward improvement levers under the HELD-OUT PROTOCOL nested 8-seed protocol.
-====================================================================
-Same outer/inner split contract as run_c2_tfm_reward_nested.py (which it imports
-from): outer 20% test is sacred; all selection, threshold tuning and calibration
-penalties are computed on D_sel / its inner-val ONLY.
-
-Arms (TFM evaluator = TabPFN v2, standard 7-op pool):
-  tfm_acc     baseline: select by inner-val accuracy;              test = argmax
-  tfm_f1thr   Lever A : select by inner-val best-threshold macroF1; test = tuned threshold
-  tfm_calib   Lever B : select by inner-val (acc - LAMBDA*ECE);     test = argmax
-  rf          reference: RF multi-objective reward;                 test = argmax
-
-The three TFM arms share ONE inner-val TabPFN fit per candidate pipeline (acc,
-tuned-F1 and ECE are all read off the same validation probabilities), so the
-selection cost is ~the same as the single-arm Table 3 run.
-
-Usage
------
-  PYTHONPATH=src:experiments python experiments/run_tfm_levers_nested.py \
-      --datasets hepatitis blood_transfusion diabetes credit_g \
-      --seeds 42 1 2 3 4 5 6 7 --output-dir outputs/paper_ready/tfm_levers_8seed
-"""
 from __future__ import annotations
 
 import argparse
@@ -37,7 +12,6 @@ from sklearn.metrics import (accuracy_score, f1_score, precision_score,
                              recall_score)
 from sklearn.model_selection import train_test_split
 
-# Reuse the audited held-out protocol harness helpers verbatim.
 import run_c2_tfm_reward_nested as NST
 from run_c2_tfm_reward_nested import (
     INNER_VAL_SIZE, MCAR_RATE, OUTER_TEST_SIZE, SUBSAMPLE_CAP,
@@ -49,23 +23,13 @@ from learn2clean_v3.data.error_injection import ErrorProfile, apply_error_profil
 from learn2clean_v3.data.openml_loader import BENCHMARK_DATASETS, load_dataset
 from learn2clean_v3.rewards import MultiObjectiveReward
 
-LAMBDA_ECE = 1.0            # weight of the calibration penalty in tfm_calib / tfm_combo
+LAMBDA_ECE = 1.0
 ARMS = ("tfm_acc", "tfm_f1thr", "tfm_calib", "tfm_combo", "rf", "rf_thr")
-# tfm_combo = Lever A (tuned-threshold macro-F1 selection + test threshold)
-#           + Lever B (calibration penalty in the selection score).
-# rf_thr    = CONTROL: the RF-selected pipeline, but with test-time threshold
-#             tuning. Isolates the decision-rule effect from the reward source:
-#             rf_thr vs rf  = pure threshold effect;
-#             tfm_f1thr vs rf_thr = extra value of TFM F1-selection.
 _METRICS = ("acc", "ece", "f1", "prec", "rec")
 _NAN5 = (float("nan"),) * 5
 
 
-# --------------------------------------------------------------------------- #
-# Threshold tuning (binary only; multiclass falls back to argmax)
-# --------------------------------------------------------------------------- #
 def _tune_threshold_f1(y_val: np.ndarray, prob_pos: np.ndarray) -> Tuple[float, float]:
-    """Return (threshold*, macroF1*) maximizing macro-F1 on the validation fold."""
     cands = np.unique(np.concatenate([[0.0], np.sort(prob_pos), [1.0]]))
     best_t, best_f1 = 0.5, -1.0
     for t in cands:
@@ -77,7 +41,6 @@ def _tune_threshold_f1(y_val: np.ndarray, prob_pos: np.ndarray) -> Tuple[float, 
 
 
 def _val_scores(y_val: np.ndarray, y_pred: np.ndarray, y_prob: np.ndarray) -> Dict[str, float]:
-    """acc, tuned-threshold macro-F1, and (acc - LAMBDA*ECE) from one val fit."""
     acc = float(accuracy_score(y_val, y_pred))
     ece = compute_ece(y_val, y_prob)
     if y_prob.ndim > 1 and y_prob.shape[1] == 2:
@@ -85,13 +48,10 @@ def _val_scores(y_val: np.ndarray, y_pred: np.ndarray, y_prob: np.ndarray) -> Di
     else:
         f1thr = float(f1_score(y_val, y_pred, average="macro", zero_division=0))
     return {"acc": acc, "f1thr": f1thr,
-            "calib": acc - LAMBDA_ECE * ece,        # Lever B
-            "combo": f1thr - LAMBDA_ECE * ece}      # Lever A + B
+            "calib": acc - LAMBDA_ECE * ece,
+            "combo": f1thr - LAMBDA_ECE * ece}
 
 
-# --------------------------------------------------------------------------- #
-# Final test-fold metrics with an explicit decision rule
-# --------------------------------------------------------------------------- #
 def _final_metrics(y_true: np.ndarray, y_pred: np.ndarray, y_prob: np.ndarray) -> Tuple[float, ...]:
     return (float(accuracy_score(y_true, y_pred)), compute_ece(y_true, y_prob),
             float(f1_score(y_true, y_pred, average="macro", zero_division=0)),
@@ -100,16 +60,13 @@ def _final_metrics(y_true: np.ndarray, y_pred: np.ndarray, y_prob: np.ndarray) -
 
 
 def final_test(X_sel_clean, y_sel, X_test_prep, y_test, seed, use_threshold: bool) -> Tuple[float, ...]:
-    """Fit TabPFN on cleaned D_sel, evaluate on untouched D_test.
-    If use_threshold: tune the decision threshold on a D_sel inner-val (held-out protocol)
-    and apply it to the test probabilities; else argmax."""
     _, ytr, le = _encode_align(X_sel_clean, y_sel)
     num = X_sel_clean.select_dtypes(include="number")
     shared = [c for c in num.columns if c in X_test_prep.columns]
     if not shared:
         return _NAN5
-    Xtr = num[shared].values.astype(float)          # train aligned to shared cols
-    Xte = X_test_prep[shared].values.astype(float)  # test aligned to the same cols
+    Xtr = num[shared].values.astype(float)
+    Xte = X_test_prep[shared].values.astype(float)
     try:
         yte = le.transform(np.asarray(y_test))
     except Exception:
@@ -119,14 +76,12 @@ def final_test(X_sel_clean, y_sel, X_test_prep, y_test, seed, use_threshold: boo
     try:
         thr = None
         if use_threshold and len(np.unique(ytr)) == 2:
-            # tune t* on an inner split of D_sel — never touches the test fold
             Xit, Xiv, yit, yiv = train_test_split(
                 Xtr, ytr, test_size=INNER_VAL_SIZE, random_state=seed, stratify=ytr)
             if len(np.unique(yit)) == 2:
                 _, vprob = _tabpfn_fit_predict(Xit, yit, Xiv, seed)
                 if vprob.ndim > 1 and vprob.shape[1] == 2:
                     thr, _ = _tune_threshold_f1(yiv, vprob[:, 1])
-        # refit on full D_sel, predict test
         y_pred, y_prob = _tabpfn_fit_predict(Xtr, ytr, Xte, seed)
         if thr is not None and y_prob.ndim > 1 and y_prob.shape[1] == 2:
             y_pred = (y_prob[:, 1] >= thr).astype(int)
@@ -136,9 +91,6 @@ def final_test(X_sel_clean, y_sel, X_test_prep, y_test, seed, use_threshold: boo
         return _NAN5
 
 
-# --------------------------------------------------------------------------- #
-# Selection over the pool (one TabPFN inner-val fit per pipeline, shared by arms)
-# --------------------------------------------------------------------------- #
 def select_arms(X_sel, y_sel, pipelines, actions, seed, rf_reward) -> Dict[str, Tuple[int, ...]]:
     n0 = len(X_sel)
     w_ret, w_qual, alpha = 0.35, 0.15, 2.0
@@ -151,7 +103,6 @@ def select_arms(X_sel, y_sel, pipelines, actions, seed, rf_reward) -> Dict[str, 
         if X_clean is None or len(X_clean) == 0:
             continue
 
-        # RF reference arm
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             rf_reward.reset(X_sel, y_sel)
@@ -159,7 +110,6 @@ def select_arms(X_sel, y_sel, pipelines, actions, seed, rf_reward) -> Dict[str, 
         if np.isfinite(rf_score) and rf_score > score["rf"]:
             score["rf"], best["rf"] = rf_score, seq
 
-        # TFM arms — one inner-val TabPFN fit, three read-outs
         X_arr, y_enc, _ = _encode_align(X_clean, y_sel)
         if len(y_enc) < 20 or len(np.unique(y_enc)) < 2:
             continue
@@ -187,7 +137,7 @@ def select_arms(X_sel, y_sel, pipelines, actions, seed, rf_reward) -> Dict[str, 
         for a, s in arm_score.items():
             if s > score[a]:
                 score[a], best[a] = s, seq
-    best["rf_thr"] = best["rf"]   # control: same pipeline as RF, threshold at test
+    best["rf_thr"] = best["rf"]
     return best
 
 
@@ -281,8 +231,6 @@ def main(dataset_names=None, output_dir=None, seeds=(42,), max_pipelines=20) -> 
     df.to_csv(out_dir / "results_per_seed.csv", index=False)
     aggregate(df).to_csv(out_dir / "results_aggregated.csv", index=False)
 
-    # ── Paired CV comparison: RF vs each TFM arm across all (dataset,seed) folds ──
-    # The 8 seeds are 8 independent stratified outer holdouts → repeated-holdout CV.
     from scipy.stats import wilcoxon
     stat_rows = []
     print(f"\n{'='*66}\nPaired CV (RF vs TFM arm) — {len(df)} folds "
@@ -295,7 +243,7 @@ def main(dataset_names=None, output_dir=None, seeds=(42,), max_pipelines=20) -> 
             a, b = a[mask], b[mask]
             if len(a) < 2:
                 continue
-            delta = a - b                      # arm - RF (ECE: lower better → negative delta = win)
+            delta = a - b
             try:
                 p = float(wilcoxon(a, b).pvalue)
             except Exception:

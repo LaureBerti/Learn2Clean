@@ -1,38 +1,3 @@
-"""
-experiments/run_d2_prioralign_nested.py
-
-D2 — Prior-aligned drift, held-out protocol.
-==================================================================
-The implemented Wasserstein "drift" term penalised distance to the
-DIRTY pre-cleaning data, not to the TFM prior — so "prior alignment" was not actually
-implemented, and drift-heavy rewards degenerate to no-op.
-
-This experiment implements the intended semantics: drift is measured as the mean
-column-wise normalised Wasserstein-1 distance between the CLEANED data and a CLEAN
-REFERENCE distribution (the pre-injection clean dataset's marginals, which we have
-because error injection is seeded from clean OpenML data). Lower drift now means
-"closer to the clean/prior distribution", as the formal definition intends.
-
-It reuses the EXACT held-out nested protocol of run_c2_tfm_reward_nested (outer
-untouched test / inner-val selection / TabPFN final eval), and adds the prior-aligned
-drift term to the TFM selection score:
-
-    tfm_score = w_acc * inner_val_acc
-              + w_ret * retention^alpha
-              + w_qual * quality
-              - drift_coeff * drift_to_CLEAN_reference      <-- the D2 change
-
-We then compare, held-out protocol:
-    * RF-reward         (unchanged baseline)
-    * TFM-prior-aligned (this experiment)
-to see whether the corrected objective recovers a real accuracy/calibration signal
-that the (leaky) submitted version only appeared to have.
-
-Usage
------
-  PYTHONPATH=src python experiments/run_d2_prioralign_nested.py --seeds 42 1 2 3 4
-  PYTHONPATH=src python experiments/run_d2_prioralign_nested.py --datasets ionosphere --seeds 42 --drift-coeff 0.05
-"""
 
 from __future__ import annotations
 
@@ -55,8 +20,6 @@ from learn2clean_v3.rewards import MultiObjectiveReward
 
 
 def drift_to_reference(X_clean: pd.DataFrame, ref_cols: Dict[str, np.ndarray]) -> float:
-    """Mean column-wise normalised Wasserstein-1 distance from cleaned data to the
-    CLEAN reference marginals (the prior proxy). Lower = better aligned."""
     numeric = X_clean.select_dtypes(include="number")
     dists: List[float] = []
     for col in numeric.columns:
@@ -78,7 +41,6 @@ def drift_to_reference(X_clean: pd.DataFrame, ref_cols: Dict[str, np.ndarray]) -
 def select_best_prioraligned(
     X_sel, y_sel, pipelines, actions, seed, rf_reward, ref_cols, drift_coeff,
 ) -> Tuple[Tuple[int, ...], Tuple[int, ...]]:
-    """Return (best_rf, best_tfm_prioraligned), selected on D_sel only."""
     n0 = len(X_sel)
     best_rf, best_rf_score = (), -np.inf
     best_tfm, best_tfm_score = (), -np.inf
@@ -103,7 +65,7 @@ def select_best_prioraligned(
         miss = float(X_clean.isna().mean().mean())
         dup = float(X_clean.duplicated().sum()) / max(len(X_clean), 1)
         quality = (1.0 - miss) * (1.0 - dup)
-        drift = drift_to_reference(X_clean, ref_cols)            # <-- D2: clean-referenced
+        drift = drift_to_reference(X_clean, ref_cols)
         tfm_score = w_acc * acc + w_ret * retention + w_qual * quality - drift_coeff * drift
         if tfm_score > best_tfm_score:
             best_tfm_score, best_tfm = tfm_score, seq
@@ -121,7 +83,6 @@ def run_one(ds_name, seed, pipelines, actions, drift_coeff) -> Optional[Dict]:
         X, _, y, _ = train_test_split(X, y, train_size=G.SUBSAMPLE_CAP, random_state=seed, stratify=y)
         X, y = X.reset_index(drop=True), y.reset_index(drop=True)
 
-    # CLEAN reference marginals (prior proxy) — from pre-injection data
     ref_cols = {c: X[c].dropna().values.astype(float)
                 for c in X.select_dtypes(include="number").columns}
 

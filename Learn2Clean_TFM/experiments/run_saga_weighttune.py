@@ -1,24 +1,3 @@
-"""
-experiments/run_saga_weighttune.py
-
-SAGA comparison — does PER-DATASET weight tuning (and the drift term) change the verdict?
-Builds a per-pipeline pool on each SAGA dataset (inner-val acc + retention/Q/W1 + sacred-test
-LogReg/TabPFN accuracy), then evaluates, per dataset:
-
-  fixed         : the a-priori R7 weights (0.50, 0.35, 0.15), power=2
-  ORACLE        : weights chosen to MAXIMISE the sacred-test accuracy  (UPPER BOUND — NOT
-                  deployable; this is selection-on-test, reported only to show the ceiling)
-  held-out protocol-tune : weights chosen on a held-out inner tuning fold, reported on the sacred test
-each × drift ∈ {off (λ=0), on (λ=0.05)}.
-
-Why the oracle matters: if even test-optimal per-dataset weights don't beat SAGA, weight
-tuning cannot rescue us. And note the held-out protocol taxonomy showed accuracy-tuning collapses to
-the over-pruning corner (the worst reward), so deployable tuning is expected to regress.
-
-Usage
------
-  PYTHONPATH=src:experiments python experiments/run_saga_weighttune.py --seeds 42 1 2 3 4
-"""
 from __future__ import annotations
 
 import argparse
@@ -71,12 +50,10 @@ def build_pool(ds, seed, pipelines, actions, tune_frac=0.25) -> List[Dict]:
     for seq in pipelines:
         Xc = G.apply_pipeline(X_sel, y_sel, seq, actions)
         if Xc is None or len(Xc) == 0: continue
-        acc_in = W.inner_val_acc(Xc, y_sel, seed, "tabpfn")          # selection signal
-        # held-out tuning-fold accuracy (different seed → different inner split) for held-out protocol tuning
+        acc_in = W.inner_val_acc(Xc, y_sel, seed, "tabpfn")
         acc_tune = W.inner_val_acc(Xc, y_sel, seed + 1000, "tabpfn")
         if not (np.isfinite(acc_in) or np.isfinite(acc_tune)): continue
         miss = float(Xc.isna().mean().mean()); dup = float(Xc.duplicated().sum()) / max(len(Xc), 1)
-        # sacred-test metrics
         Xtp = G.prepare_test_like_train(X_sel, X_te, seq)
         Xtr, ytr, le = G._encode_align(Xc, y_sel)
         shared = [c for c in Xc.select_dtypes(include="number").columns if c in Xtp.columns]
@@ -93,7 +70,6 @@ def build_pool(ds, seed, pipelines, actions, tune_frac=0.25) -> List[Dict]:
 
 
 def pick(pool: pd.DataFrame, w, lam, power, by) -> float:
-    """Select pipeline = argmax score(by), return its test_logreg accuracy."""
     a = pool[by].values
     s = w[0]*np.nan_to_num(a, nan=-1) + w[1]*(pool["ret"].values**power) + w[2]*pool["Q"].values - lam*pool["W1"].values
     i = int(np.argmax(s))
@@ -114,7 +90,6 @@ def main(seeds, max_pipelines, step, output_dir=None) -> None:
             print(f"  pooled {ds} s{seed}", flush=True)
     pool = pd.DataFrame(pool_rows)
 
-    # Per dataset: fixed / oracle / held-out protocol-tune, × drift off/on. Average test_logreg over seeds.
     res = []
     for ds, g_ds in pool.groupby("dataset"):
         row = {"dataset": ds}
@@ -124,9 +99,7 @@ def main(seeds, max_pipelines, step, output_dir=None) -> None:
             for seed, g in g_ds.groupby("seed"):
                 g = g.reset_index(drop=True)
                 fixed.append(pick(g, FIXED, lam, 2.0, "acc_in"))
-                # ORACLE: choose (w,power) maximising TEST accuracy (upper bound, not deployable)
                 oracle.append(max(_score_to_testacc(g, w, lam, p, "test_logreg") for w, p in product(grid, POWERS)))
-                # held-out protocol tune: pick (w,power) maximising held-out TUNING-fold accuracy, report on test
                 besti = max((_score_to_testacc(g, w, lam, p, "acc_tune", return_idx=True) for w, p in product(grid, POWERS)),
                             key=lambda i: g.iloc[i]["acc_tune"])
                 lftune.append(float(g.iloc[besti]["test_logreg"]))

@@ -1,16 +1,3 @@
-"""OpenML dataset loader for Learn2Clean V3 benchmark experiments.
-
-Loads the 10 datasets (D1–D10) used in TabPFN v1/v2 and TabICL benchmark papers.
-Caches each dataset as a Parquet file under outputs/datasets/ to avoid repeated
-network calls. Falls back gracefully when openml is not installed.
-
-Usage::
-
-    from learn2clean_v3.data import load_dataset, load_all_datasets
-
-    X, y, spec = load_dataset("diabetes")
-    all_datasets = load_all_datasets()
-"""
 
 from __future__ import annotations
 
@@ -24,42 +11,31 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Sentinel for optional openml dependency
-# ---------------------------------------------------------------------------
 try:
-    import openml  # type: ignore
+    import openml
 
     OPENML_AVAILABLE = True
-except ImportError:  # pragma: no cover
+except ImportError:
     OPENML_AVAILABLE = False
     logger.warning(
         "openml not installed — load_dataset() will only work from local cache. "
         "Install with: pip install openml"
     )
 
-# ---------------------------------------------------------------------------
-# DatasetSpec
-# ---------------------------------------------------------------------------
 
 @dataclass
 class DatasetSpec:
-    """Specification for one benchmark dataset."""
 
     name: str
     openml_id: int
     eval_metric: str = "f1"
-    max_rows: Optional[int] = None          # stratified subsample cap (None = use all)
-    zero_as_nan_cols: List[str] = field(default_factory=list)  # columns where 0 → NaN
+    max_rows: Optional[int] = None
+    zero_as_nan_cols: List[str] = field(default_factory=list)
     seed: int = 42
 
 
-# ---------------------------------------------------------------------------
-# Benchmark dataset registry (D1–D10)
-# ---------------------------------------------------------------------------
 
 BENCHMARK_DATASETS: Dict[str, DatasetSpec] = {
-    # --- XS tier (<400 rows) ---
     "hepatitis": DatasetSpec(
         name="hepatitis",
         openml_id=55,
@@ -78,7 +54,6 @@ BENCHMARK_DATASETS: Dict[str, DatasetSpec] = {
         eval_metric="accuracy",
         max_rows=None,
     ),
-    # --- S tier (<1K rows) ---
     "blood_transfusion": DatasetSpec(
         name="blood_transfusion",
         openml_id=1464,
@@ -90,7 +65,6 @@ BENCHMARK_DATASETS: Dict[str, DatasetSpec] = {
         openml_id=37,
         eval_metric="f1",
         max_rows=None,
-        # Pima: physiologically impossible zeros represent missing data
         zero_as_nan_cols=["plas", "pres", "skin", "insu", "mass"],
     ),
     "credit_g": DatasetSpec(
@@ -99,7 +73,6 @@ BENCHMARK_DATASETS: Dict[str, DatasetSpec] = {
         eval_metric="f1",
         max_rows=None,
     ),
-    # --- M tier (1K–10K rows) ---
     "kr_vs_kp": DatasetSpec(
         name="kr_vs_kp",
         openml_id=3,
@@ -112,7 +85,6 @@ BENCHMARK_DATASETS: Dict[str, DatasetSpec] = {
         eval_metric="f1",
         max_rows=None,
     ),
-    # --- L tier (>10K rows, capped at 10K for RL training) ---
     "adult": DatasetSpec(
         name="adult",
         openml_id=1590,
@@ -128,9 +100,6 @@ BENCHMARK_DATASETS: Dict[str, DatasetSpec] = {
 }
 
 
-# ---------------------------------------------------------------------------
-# Cache helpers
-# ---------------------------------------------------------------------------
 
 _CACHE_DIR = Path(__file__).parents[3] / "outputs" / "datasets"
 
@@ -156,12 +125,8 @@ def _load_cache(spec: DatasetSpec) -> Optional[Tuple[pd.DataFrame, pd.Series]]:
     return combined, y
 
 
-# ---------------------------------------------------------------------------
-# Core load logic
-# ---------------------------------------------------------------------------
 
 def _fetch_from_openml(spec: DatasetSpec) -> Tuple[pd.DataFrame, pd.Series]:
-    """Download a dataset via the openml API and return (X, y) as DataFrames."""
     if not OPENML_AVAILABLE:
         raise RuntimeError(
             f"openml is not installed and no local cache exists for '{spec.name}'. "
@@ -189,25 +154,20 @@ def _fetch_from_openml(spec: DatasetSpec) -> Tuple[pd.DataFrame, pd.Series]:
 
 
 def _preprocess(X: pd.DataFrame, y: pd.Series, spec: DatasetSpec) -> Tuple[pd.DataFrame, pd.Series]:
-    """Apply dataset-specific preprocessing and ordinal-encode categoricals."""
     X = X.copy()
 
-    # Pima diabetes: replace physiologically impossible zeros with NaN
     for col in spec.zero_as_nan_cols:
-        # case-insensitive match for robustness across openml naming variants
         matched = [c for c in X.columns if c.lower() == col.lower()]
         for c in matched:
             X[c] = X[c].replace(0, np.nan)
 
-    # Ordinal-encode categorical / object columns
-    from sklearn.preprocessing import OrdinalEncoder  # local import (optional dep guard)
+    from sklearn.preprocessing import OrdinalEncoder
 
     cat_cols = X.select_dtypes(include=["category", "object"]).columns.tolist()
     if cat_cols:
         enc = OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=np.nan)
         X[cat_cols] = enc.fit_transform(X[cat_cols]).astype(float)
 
-    # Convert all remaining columns to float32
     X = X.astype(np.float32)
 
     return X, y
@@ -216,12 +176,10 @@ def _preprocess(X: pd.DataFrame, y: pd.Series, spec: DatasetSpec) -> Tuple[pd.Da
 def _subsample(
     X: pd.DataFrame, y: pd.Series, max_rows: int, seed: int
 ) -> Tuple[pd.DataFrame, pd.Series]:
-    """Stratified subsample to at most *max_rows* rows."""
     from sklearn.model_selection import train_test_split
 
     if len(X) <= max_rows:
         return X, y
-    # train_test_split gives us an easy stratified split
     _, X_sub, _, y_sub = train_test_split(
         X, y,
         test_size=max_rows,
@@ -231,9 +189,6 @@ def _subsample(
     return X_sub.reset_index(drop=True), y_sub.reset_index(drop=True)
 
 
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
 
 def load_dataset(
     name: str,
@@ -242,35 +197,12 @@ def load_dataset(
     force_download: bool = False,
     preprocess: bool = True,
 ) -> Tuple[pd.DataFrame, pd.Series, DatasetSpec]:
-    """Load a benchmark dataset by name.
-
-    Parameters
-    ----------
-    name:
-        One of the keys in BENCHMARK_DATASETS.
-    use_cache:
-        If True (default), return from local Parquet cache when available.
-    force_download:
-        If True, re-download from OpenML even if a cache exists.
-    preprocess:
-        If True (default), apply ordinal encoding and Pima zeros→NaN fix.
-
-    Returns
-    -------
-    X : pd.DataFrame
-        Feature matrix (float32).
-    y : pd.Series
-        Integer-coded target.
-    spec : DatasetSpec
-        The dataset specification.
-    """
     if name not in BENCHMARK_DATASETS:
         raise ValueError(
             f"Unknown dataset {name!r}. Available: {sorted(BENCHMARK_DATASETS)}"
         )
     spec = BENCHMARK_DATASETS[name]
 
-    # Try cache first
     if use_cache and not force_download:
         cached = _load_cache(spec)
         if cached is not None:
@@ -282,7 +214,6 @@ def load_dataset(
                 X, y = _subsample(X, y, spec.max_rows, spec.seed)
             return X, y, spec
 
-    # Download
     logger.info("Downloading '%s' (openml id=%d) …", name, spec.openml_id)
     X, y = _fetch_from_openml(spec)
     _save_cache(X, y, spec)
@@ -302,13 +233,6 @@ def load_all_datasets(
     force_download: bool = False,
     preprocess: bool = True,
 ) -> Dict[str, Tuple[pd.DataFrame, pd.Series, DatasetSpec]]:
-    """Load all 10 benchmark datasets.
-
-    Returns
-    -------
-    dict mapping dataset name → (X, y, spec).
-    Failed datasets are skipped with a warning (network issues, missing deps).
-    """
     results: Dict[str, Tuple[pd.DataFrame, pd.Series, DatasetSpec]] = {}
     for name in BENCHMARK_DATASETS:
         try:
@@ -318,6 +242,6 @@ def load_all_datasets(
                 force_download=force_download,
                 preprocess=preprocess,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("Skipping '%s': %s", name, exc)
     return results

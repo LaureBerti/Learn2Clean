@@ -1,27 +1,3 @@
-"""
-experiments/run_divergence_pollution.py
-
-CONTROLLED STRESS-TEST of the reward mechanism (NOT a general-superiority claim). On `adult`
-the TFM-reward (R7) beats the RF-reward (R3) because the two rewards pick DIFFERENT imputers:
-R3→impute(knn) (trees like KNN's locally-coherent fills), R7→impute(mean/median) (KNN fabricates
-off-prior local structure that distorts TabPFN's global normalization). We *engineer* that regime
-on other datasets with a synthetic pollution and test the falsifiable prediction:
-
-  IF we inject CLUSTER-LOCAL missingness (missingness concentrated inside local feature-space
-  clusters, so KNN imputes plausibly per-cluster but fabricates multi-modal global density),
-  THEN R7 should start beating R3, with the same R3→knn / R7→mean·median imputer split —
-  whereas plain MCAR (inert per dossier ⑦) should leave R3≈R7.
-
-Pure-accuracy selection (argmax inner-val acc), held-out nested protocol (reuses W.inner_val_acc
-for selection and W.panel_on_test for the sacred-test number). Records the SELECTED imputer per
-reward so we can see the mechanism fire, not just the accuracy delta.
-
-Usage
------
-  PYTHONPATH=src:experiments python experiments/run_divergence_pollution.py \
-      --datasets ionosphere diabetes heart_statlog phoneme bank_marketing hepatitis adult \
-      --seeds 42 1 2
-"""
 from __future__ import annotations
 import argparse, sys
 from pathlib import Path
@@ -34,7 +10,7 @@ sys.path.insert(0, str(ROOT / "src")); sys.path.insert(0, str(ROOT / "experiment
 import run_c2_tfm_reward_nested as G
 import run_weight_robustness as W
 
-CONDITIONS = [("mcar", 0.30), ("clm", 0.30), ("clm", 0.50)]  # mcar = inert control; clm = the trigger
+CONDITIONS = [("mcar", 0.30), ("clm", 0.30), ("clm", 0.50)]
 
 
 def inject_mcar(X, rate, seed):
@@ -45,9 +21,6 @@ def inject_mcar(X, rate, seed):
 
 
 def inject_clm(X, rate, seed, k=4):
-    """Cluster-local MAR missingness: cluster rows in standardized numeric space, then drop values
-    at high rate ONLY inside the smaller half of clusters. KNN imputation recovers cluster-local
-    values (RF-friendly); the per-cluster fills create multi-modal global density (TabPFN-unfriendly)."""
     rng = np.random.default_rng(seed)
     num = X.select_dtypes(include="number")
     if num.shape[1] == 0:
@@ -56,7 +29,7 @@ def inject_clm(X, rate, seed, k=4):
     kk = int(min(k, max(2, len(X) // 50)))
     lab = KMeans(n_clusters=kk, n_init=3, random_state=seed).fit_predict(Z.values)
     sizes = pd.Series(lab).value_counts()
-    prone = set(sizes.index[len(sizes) // 2:])                # smaller clusters → missing-prone
+    prone = set(sizes.index[len(sizes) // 2:])
     in_prone = np.array([lab[i] in prone for i in range(len(X))])
     Xo = X.copy()
     for c in num.columns:
@@ -66,7 +39,6 @@ def inject_clm(X, rate, seed, k=4):
 
 
 def select_pure(X_sel, y_sel, pipes, actions, seed, estimator):
-    """argmax inner-val accuracy (no composite reward) — isolates the imputer-choice effect."""
     best, bs = (), -np.inf
     for seq in pipes:
         Xc = G.apply_pipeline(X_sel, y_sel, seq, actions)
@@ -163,7 +135,6 @@ def main(datasets, seeds, output_dir):
                                  r7_wins=("delta", lambda s: int((s > 0).sum())),
                                  n=("delta", "count"), imp_differ=("imputers_differ", "mean")).reset_index()
     agg.to_csv(out / "divergence_by_cond.csv", index=False)
-    # imputer-choice breakdown per condition (does R3→knn / R7→mean·median emerge?)
     mix = df.groupby(["cond", "r3_imputer"]).size().rename("r3_n").reset_index()
     mix.to_csv(out / "divergence_imputer_mix.csv", index=False)
     print("\n=== BY CONDITION (does cluster-local missingness trigger R7>R3?) ===")

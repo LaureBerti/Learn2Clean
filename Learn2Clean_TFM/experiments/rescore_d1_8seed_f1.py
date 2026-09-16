@@ -1,34 +1,3 @@
-"""
-experiments/rescore_d1_8seed_f1.py
-
-Add macro-F1 / precision / recall to the held-out protocol 8-seed C2 comparison
-=======================================================================
-The original C2 nested run (outputs/paper_ready/d1_8seed) logged only accuracy
-and ECE per (dataset, seed) for the RF-reward and TFM-reward greedy selections.
-This script re-scores the SAME already-selected pipelines with the full metric
-set, WITHOUT re-running pipeline selection:
-
-  * the outer D_sel/D_test split is fully seed-deterministic
-    (run_c2_tfm_reward_nested.run_one uses random_state=seed everywhere), so we
-    reconstruct the exact same split;
-  * we parse the recorded rf_pipeline / tfm_pipeline LABELS back into action
-    sequences and re-apply them (no re-selection — the argmax is fixed);
-  * we refit TabPFN on the cleaned D_sel context and evaluate on the untouched
-    D_test, exactly as the original final-eval step did.
-
-Because nothing about selection or evaluation changes, the recomputed accuracy and
-ECE MUST match the recorded d1_8seed values — this is printed as a sanity check.
-The only additions are macro-F1, macro-precision, macro-recall.
-
-Env must match the original run: do NOT set TABPFN_* env vars (defaults reproduce
-the D1/d1_8seed configuration).
-
-Usage:
-  conda activate l2c_torch
-  PYTHONPATH=src python experiments/rescore_d1_8seed_f1.py \
-      --in outputs/paper_ready/d1_8seed/results_per_seed.csv \
-      --out outputs/paper_ready/d1_8seed/results_allmetrics_per_seed.csv
-"""
 from __future__ import annotations
 
 import argparse
@@ -45,7 +14,6 @@ from sklearn.model_selection import train_test_split
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
 
-# Reuse the EXACT machinery from the nested C2 run so behaviour is identical.
 import run_c2_tfm_reward_nested as C2
 from run_c2_tfm_reward_nested import (ACTION_LABELS, MCAR_RATE, OUTER_TEST_SIZE,
                                       SUBSAMPLE_CAP, apply_pipeline,
@@ -54,12 +22,10 @@ from run_c2_tfm_reward_nested import (ACTION_LABELS, MCAR_RATE, OUTER_TEST_SIZE,
 from learn2clean_v3.data.error_injection import ErrorProfile, apply_error_profile
 from learn2clean_v3.data.openml_loader import load_dataset
 
-# Reverse map: pipeline label string -> action index.
 LABEL_TO_IDX = {v: k for k, v in ACTION_LABELS.items()}
 
 
 def parse_pipeline(label: str):
-    """'no_op' -> (); 'impute(knn) → scale(zscore)' -> (2, 6)."""
     label = str(label).strip()
     if label in ("", "no_op", "nan"):
         return ()
@@ -73,7 +39,6 @@ def parse_pipeline(label: str):
 
 
 def final_test_allmetrics(X_sel_clean, y_sel, X_test_prepared, y_test, seed):
-    """acc, ece, macro-f1, macro-precision, macro-recall on untouched D_test."""
     Xtr, ytr, le = _encode_align(X_sel_clean, y_sel)
     shared = [c for c in X_sel_clean.select_dtypes(include="number").columns
               if c in X_test_prepared.columns]
@@ -99,7 +64,6 @@ def final_test_allmetrics(X_sel_clean, y_sel, X_test_prepared, y_test, seed):
 
 
 def reconstruct_split(ds_name: str, seed: int):
-    """Rebuild the exact D_sel/D_test that run_one produced for (ds_name, seed)."""
     X, y, spec = load_dataset(ds_name, use_cache=True)
     if len(X) > SUBSAMPLE_CAP:
         Xs, _, ys, _ = train_test_split(X, y, train_size=SUBSAMPLE_CAP,
@@ -124,7 +88,6 @@ def main(in_csv: str, out_csv: str) -> None:
 
     for _, r in src.iterrows():
         ds, seed = r["dataset"], int(r["seed"])
-        # openml_loader keys use hyphens; d1_8seed stored underscores.
         ds_key = ds.replace("_", "-")
         X_sel, y_sel, X_test, y_test = reconstruct_split(ds_key, seed)
         out = {"dataset": ds, "seed": seed,
@@ -144,14 +107,13 @@ def main(in_csv: str, out_csv: str) -> None:
                     X_clean, y_sel, X_test_prep, y_test, seed)
             out[f"{mode}_acc"], out[f"{mode}_ece"] = acc, ece
             out[f"{mode}_f1"], out[f"{mode}_prec"], out[f"{mode}_rec"] = f1, prec, rec
-            # sanity: recomputed acc/ece must match the recorded d1_8seed values
             if np.isfinite(acc) and np.isfinite(r.get(f"{mode}_acc", np.nan)):
                 max_acc_err = max(max_acc_err, abs(acc - r[f"{mode}_acc"]))
                 max_ece_err = max(max_ece_err, abs(ece - r[f"{mode}_ece"]))
         rows.append(out)
         print(f"  {ds:16s} seed {seed:2d}  rf_f1={out['rf_f1']:.4f} tfm_f1={out['tfm_f1']:.4f} "
               f"({(time.time()-t0)/60:.1f} min)", flush=True)
-        pd.DataFrame(rows).to_csv(out_csv, index=False)  # incremental save
+        pd.DataFrame(rows).to_csv(out_csv, index=False)
 
     df = pd.DataFrame(rows)
     df.to_csv(out_csv, index=False)
@@ -160,7 +122,6 @@ def main(in_csv: str, out_csv: str) -> None:
           f"max |Δece|={max_ece_err:.2e}  (should be ~0)")
     print(f"Saved {len(df)} rows -> {out_csv}  ({(time.time()-t0)/60:.1f} min)")
 
-    # aggregate mean ± 95% CI per dataset for every metric
     agg_rows = []
     for ds, g in df.groupby("dataset"):
         row = {"dataset": ds, "n_seeds": len(g)}

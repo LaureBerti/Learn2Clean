@@ -1,26 +1,5 @@
-"""
-experiments/run_c5_taskeval_par.py
-
-Parallel driver for the C5 task-level experiment: the parameterized vs. discrete
-action space, measured on the downstream TabPFN v2 test metric under the held-out
-(nested) protocol.
-
-Same computation as run_c5_taskeval.py — it reuses the nested harness
-(run_c2_tfm_reward_nested.run_one) and the action-pool builders / k-aware test-prep
-from run_c5_taskeval — but it evaluates the independent (dataset, seed, mode) tasks
-concurrently. results_per_seed.csv is written after each completed task, and --resume
-skips tasks already recorded there. Reported metrics come from the RF-reward-selected
-pipeline (the C5 selection criterion).
-
-Usage
------
-  PYTHONPATH=src:experiments python experiments/run_c5_taskeval_par.py \
-      --seeds 42 1 2 3 4 5 6 7 --workers 8 \
-      --output-dir outputs/paper_ready/c5_taskeval
-"""
 from __future__ import annotations
 
-# Pin math libraries to a single thread per process before importing numpy/sklearn.
 import os
 for _v in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS",
            "NUMEXPR_NUM_THREADS", "VECLIB_MAXIMUM_THREADS"):
@@ -40,8 +19,6 @@ from run_c5_taskeval import build_discrete, build_param, make_prepare_test
 
 
 def _cap_threads() -> None:
-    """Keep every RandomForest and TabPFN/torch call single-threaded; parallelism is
-    provided across tasks, not within a single estimator."""
     import sklearn.ensemble as _ske
     if not getattr(_ske.RandomForestClassifier, "_n_jobs_capped", False):
         _orig = _ske.RandomForestClassifier.__init__
@@ -72,14 +49,8 @@ _MAX_PIPELINES = 300
 
 
 def _run_task(task: Tuple[str, int, str]) -> Optional[Dict]:
-    """Run one (dataset, seed, mode): set the mode's action pool on the C2 module
-    globals, call run_one, and return the RF-reward-selected TabPFN test metrics."""
     ds, seed, mode = task
     _cap_threads()
-    # C5 reports the RF-reward-selected path (rf_*) only. In select_best the RF path is
-    # computed independently of the TFM-selection path, so stubbing the per-candidate
-    # inner-validation TabPFN scorer leaves every rf_* metric identical while skipping
-    # the unused TabPFN selection calls; only the ignored tfm_* columns change.
     C2.inner_val_tabpfn_acc = lambda *a, **k: 0.0
     actions, labels, groups = build_discrete() if mode == "discrete" else build_param()
     C2.ACTION_LABELS = labels
@@ -90,7 +61,7 @@ def _run_task(task: Tuple[str, int, str]) -> Optional[Dict]:
                  if _SAMPLE else all_pipelines)
     try:
         r = C2.run_one(ds, seed, pipelines, actions)
-    except Exception as exc:  # a single failed cell must not sink the whole sweep
+    except Exception as exc:
         return {"dataset": ds, "seed": seed, "mode": mode, "error": str(exc)[:200]}
     if r is None:
         return None
@@ -151,7 +122,7 @@ def main() -> None:
                 n_ok += 1
                 print(f"  [{i}/{len(tasks)}] {res['dataset']:<18} seed{res['seed']} "
                       f"{res['mode']:<8} acc={res['acc']:.4f} ({(time.time()-t0):.0f}s)", flush=True)
-            pd.DataFrame(rows).to_csv(per_seed, index=False)  # checkpoint after every task
+            pd.DataFrame(rows).to_csv(per_seed, index=False)
 
     df = pd.DataFrame(rows)
     df.to_csv(per_seed, index=False)

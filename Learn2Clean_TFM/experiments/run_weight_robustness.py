@@ -1,34 +1,3 @@
-"""
-experiments/run_weight_robustness.py
-
-WR — Weight-robustness: fair R7 (TFMAwareReward) vs R3 (RF-reward) over the WHOLE weight
-simplex + weight-free Pareto. Implements docs/protocols/weight_robustness_protocol.md.
-Held-out protocol (sacred outer test / inner-val selection); MATCHED — the ONLY difference between
-R3 and R7 is the accuracy estimator (RandomForest vs TabPFN v2).
-
-Design (complete-metrics, single cache → all analyses free):
-  Per (dataset, seed), for EVERY candidate pipeline, record ONE pool row:
-    inner-val:   acc_rf_inner, acc_tab_inner               (selection signals)
-    components:  retention, Q, W1_drift
-    test panel:  for each evaluator E in {tabpfn, logreg, mlp, xgb} and the neutral
-                 aggregate (logreg+mlp+xgb, i.e. excluding TabPFN's own family):
-                   E_acc, E_f1, E_precision, E_recall, E_ece     on the sacred test
-  → outputs/paper_ready/weight_robustness/pool_metrics.csv
-
-Then pure analysis over the pool (no extra model calls):
-  * Simplex sweep: per (weights, λ): R3 = argmax score with acc_rf_inner,
-    R7 = argmax with acc_tab_inner; gap = test-metric(R7 pipe) − test-metric(R3 pipe).
-    Win/tie/loss fractions over the simplex per metric; named-point readout
-    (R7=(.50,.35,.15), R3=(.50,.30,.20)); HW1 concentration corr(|gap|, w_acc).
-  * Pareto (weight-free): per cell, global front over the pool on
-    (neutral_f1 ↑, retention ↑, W1 ↓, neutral_ece ↓); dominance rate of R7- vs
-    R3-selected points; hypervolume (pymoo if available).
-  → wr_per_config.csv, wr_summary.txt, wr_pareto.csv
-
-Usage
------
-  PYTHONPATH=src:experiments python experiments/run_weight_robustness.py --seeds 42 1 2 3 4 5 6 7
-"""
 
 from __future__ import annotations
 
@@ -76,9 +45,6 @@ def simplex_grid(step: float = 0.1) -> List[Tuple[float, float, float]]:
     return [(i / k, j / k, (k - i - j) / k) for i in range(k + 1) for j in range(k + 1 - i)]
 
 
-# --------------------------------------------------------------------------- #
-# Per-pipeline scoring (inner-val components + sacred-test panel)
-# --------------------------------------------------------------------------- #
 def inner_val_acc(X_clean, y, seed, eval_model) -> float:
     X_arr, y_enc, _ = G._encode_align(X_clean, y)
     if len(y_enc) < 20 or len(np.unique(y_enc)) < 2:
@@ -158,7 +124,6 @@ def panel_on_test(Xtr, ytr, Xte, yte, seed) -> Dict[str, Dict[str, float]]:
 
 
 def build_pool(ds_name, seed, pipelines, actions) -> List[Dict]:
-    """One row per pipeline: inner components + full test panel (all metrics)."""
     try:
         X, y, _ = load_dataset(ds_name, use_cache=True)
     except Exception:
@@ -193,7 +158,6 @@ def build_pool(ds_name, seed, pipelines, actions) -> List[Dict]:
                "acc_rf_inner": acc_rf, "acc_tab_inner": acc_tab,
                "retention": len(Xc) / n0, "Q": (1 - miss) * (1 - dup),
                "W1": drift_to_dirty(Xc, ref_cols)}
-        # test panel
         Xtp = G.prepare_test_like_train(X_sel, X_test, seq)
         Xtr, ytr, le = G._encode_align(Xc, y_sel)
         shared = [c for c in Xc.select_dtypes(include="number").columns if c in Xtp.columns]
@@ -210,9 +174,6 @@ def build_pool(ds_name, seed, pipelines, actions) -> List[Dict]:
     return rows
 
 
-# --------------------------------------------------------------------------- #
-# Analysis over the pool (sweep + Pareto) — pure arithmetic, no model calls
-# --------------------------------------------------------------------------- #
 def _argmax(pool: pd.DataFrame, w, lam, acc_col) -> Optional[int]:
     a = pool[acc_col].values
     score = w[0] * a + w[1] * pool["retention"].values + w[2] * pool["Q"].values - lam * pool["W1"].values
@@ -239,7 +200,6 @@ def sweep(pool_df: pd.DataFrame, weights) -> pd.DataFrame:
 
 
 def _pareto_mask(M: np.ndarray) -> np.ndarray:
-    """M: maximize all columns. Return boolean mask of non-dominated rows."""
     n = len(M); keep = np.ones(n, bool)
     for i in range(n):
         if not keep[i]:
@@ -251,8 +211,6 @@ def _pareto_mask(M: np.ndarray) -> np.ndarray:
 
 
 def pareto(pool_df: pd.DataFrame, weights) -> pd.DataFrame:
-    """Per cell: global front over the pool on (neutral_f1↑, retention↑, −W1↑, −neutral_ece↑);
-    dominance of R7- vs R3-selected pipelines (selection at the named points + a mid weight)."""
     rows = []
     probe = list(NAMED.values()) + [(1/3, 1/3, 1/3)]
     for (ds, seed), pool in pool_df.groupby(["dataset", "seed"]):
@@ -306,7 +264,6 @@ def summarize(df: pd.DataFrame, par: pd.DataFrame, out_dir: Path) -> str:
     return txt
 
 
-# --------------------------------------------------------------------------- #
 def main(dataset_names=None, output_dir=None, seeds=(42,), max_pipelines=18, step=0.1) -> None:
     if dataset_names is None:
         dataset_names = list(BENCHMARK_DATASETS.keys())

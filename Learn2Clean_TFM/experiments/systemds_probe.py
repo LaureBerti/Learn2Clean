@@ -1,9 +1,3 @@
-"""
-experiments/systemds_probe.py — print the INSTALLED SystemDS `topk_cleaning` builtin signature so we
-can match the driver's multi-return LHS to the installed version (the run failed with
-"Undefined Variable topKScores": the builtin's return arity/order differs across versions).
-Read-only; prints to stdout (captured in the run log).
-"""
 import glob, re, sys
 from pathlib import Path
 
@@ -27,7 +21,6 @@ for c in cands:
         print("\n--- ARGS  ---\n", " ".join(m.group("args").split()))
         print("\n--- RETURN---\n", " ".join(m.group("ret").split()))
 
-# also surface the eval-function contract topk_cleaning expects (it calls evaluationFunc)
 ev = glob.glob(str(base / "**" / "*.dml"), recursive=True)
 for f in ev:
     t = Path(f).read_text()

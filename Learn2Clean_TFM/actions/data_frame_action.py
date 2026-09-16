@@ -1,11 +1,3 @@
-"""
-DataFrameAction — base class for all cleaning operations in Learn2Clean V3.
-
-V3 improvements over V2:
-- Pandera schema validation after every transform (optional, configurable)
-- Raises DataValidationError on schema regression instead of silently passing bad data
-- Cleaner logging via LoggingMixin
-"""
 
 from __future__ import annotations
 
@@ -22,31 +14,10 @@ logger = logging.getLogger(__name__)
 
 
 class DataValidationError(RuntimeError):
-    """Raised when a transform produces data that violates the attached schema."""
+    pass
 
 
 class DataFrameAction(ABC):
-    """
-    Abstract base class for all DataFrame cleaning/preparation actions.
-
-    Subclasses must implement ``transform(df)``.  The ``fit`` step is optional
-    (column statistics computed on training split) and defaults to a no-op.
-
-    Parameters
-    ----------
-    columns : list[str] | None
-        Explicit list of columns to target. ``None`` means 'all eligible'.
-    exclude_columns : list[str] | None
-        Columns to exclude from targeting.
-    dtype_filter : str | None
-        Restrict to columns of this dtype family ('numeric', 'object', 'datetime').
-    schema : pa.DataFrameSchema | None
-        Pandera schema to validate the result after ``transform``.
-        Validation is skipped if ``None``.
-    strict_schema : bool
-        If True, schema errors raise ``DataValidationError``.
-        If False, they are logged as warnings and the result is still returned.
-    """
 
     def __init__(
         self,
@@ -64,25 +35,20 @@ class DataFrameAction(ABC):
         self._fitted_columns: List[str] = []
         self._is_fitted: bool = False
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
 
     def fit(self, df: Features, y: OptionalTarget = None) -> "DataFrameAction":
-        """Learn column statistics from *df*.  Override in subclass as needed."""
         self._fitted_columns = self._select_columns(df)
         self._is_fitted = True
         return self
 
     @abstractmethod
     def transform(self, df: Features) -> Features:
-        """Apply the cleaning/preparation operation.  Must return a new DataFrame."""
+        pass
 
     def fit_transform(self, df: Features, y: OptionalTarget = None) -> Features:
         return self.fit(df, y).transform(df)
 
     def __call__(self, df: Features, y: OptionalTarget = None) -> Features:
-        """Fit-transform shortcut with post-transform schema validation."""
         if not self._is_fitted:
             self.fit(df, y)
 
@@ -98,13 +64,9 @@ class DataFrameAction(ABC):
         return result
 
     def reset(self) -> None:
-        """Reset fit state (called between RL episodes)."""
         self._fitted_columns = []
         self._is_fitted = False
 
-    # ------------------------------------------------------------------
-    # Column selection helpers
-    # ------------------------------------------------------------------
 
     def _select_columns(self, df: Features) -> List[str]:
         if self._columns is not None:
@@ -124,9 +86,6 @@ class DataFrameAction(ABC):
     def fitted_columns(self) -> List[str]:
         return list(self._fitted_columns)
 
-    # ------------------------------------------------------------------
-    # Schema validation
-    # ------------------------------------------------------------------
 
     def _validate(self, df: Features) -> None:
         if self._schema is None:
@@ -142,9 +101,6 @@ class DataFrameAction(ABC):
                 raise DataValidationError(msg) from exc
             logger.warning(msg)
 
-    # ------------------------------------------------------------------
-    # Repr
-    # ------------------------------------------------------------------
 
     def __repr__(self) -> str:
         cols = self._columns or "all"

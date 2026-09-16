@@ -1,36 +1,3 @@
-"""
-FuzzyDeduplicator — near-duplicate row removal.
-
-Implements the same clustering approach that OpenRefine uses for its
-"cluster and merge" feature.  Two strategies are supported:
-
-  "fingerprint"  — case-fold + strip punctuation + sort tokens + exact match
-                   (OpenRefine's default fingerprint cluster method)
-
-  "ngram"        — character n-gram Jaccard similarity with a configurable
-                   threshold (OpenRefine's n-gram fingerprint method)
-
-For each cluster of near-duplicate rows the first (or last) row is kept,
-exactly like ``ParameterizedDeduplicator`` for exact duplicates.
-
-Dependencies
-------------
-``rapidfuzz`` is used for efficient string similarity when strategy="ngram".
-It is an optional dependency; if absent, the action falls back to exact dedup.
-
-    pip install rapidfuzz
-
-Hyperparameters
----------------
-strategy : str
-    "fingerprint" (default) or "ngram".
-threshold : float
-    Jaccard similarity threshold for ngram strategy (0–1, default 0.85).
-keep : str
-    "first" or "last" — which row to retain from each duplicate cluster.
-cols : str
-    Columns to fingerprint: "text" (categorical/object cols only) or "all".
-"""
 
 from __future__ import annotations
 
@@ -49,17 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 def _fingerprint(text: str) -> str:
-    """
-    OpenRefine-style fingerprint:
-    1. Lowercase
-    2. Strip leading/trailing whitespace
-    3. Remove punctuation / non-word characters
-    4. Normalise unicode (NFKD)
-    5. Sort tokens alphabetically
-    6. Rejoin
-    """
     text = unicodedata.normalize("NFKD", text.lower().strip())
-    # Keep only alphanumeric and spaces
     chars = [c if (c.isalnum() or c.isspace()) else " " for c in text]
     cleaned = "".join(chars)
     tokens = sorted(set(cleaned.split()))
@@ -67,7 +24,6 @@ def _fingerprint(text: str) -> str:
 
 
 def _row_fingerprint(row: pd.Series) -> str:
-    """Concatenate column fingerprints for a DataFrame row."""
     parts = []
     for val in row:
         parts.append(_fingerprint(str(val)) if not pd.isna(val) else "")
@@ -75,22 +31,6 @@ def _row_fingerprint(row: pd.Series) -> str:
 
 
 class FuzzyDeduplicator(ParameterizedAction):
-    """
-    Remove near-duplicate rows using fingerprinting or n-gram similarity.
-
-    Mirrors OpenRefine's cluster-and-merge workflow as a composable action.
-
-    Hyperparameters
-    ---------------
-    strategy : str
-        "fingerprint" or "ngram".
-    threshold : float
-        Jaccard similarity threshold for "ngram" strategy (ignored for fingerprint).
-    keep : str
-        "first" or "last".
-    cols : str
-        "text" (object columns only) or "all".
-    """
 
     def __init__(
         self,
@@ -136,7 +76,6 @@ class FuzzyDeduplicator(ParameterizedAction):
             ),
         ]
 
-    # ------------------------------------------------------------------ #
 
     def fit(self, df: Features, y: OptionalTarget = None) -> "FuzzyDeduplicator":
         self._is_fitted = True
@@ -149,7 +88,6 @@ class FuzzyDeduplicator(ParameterizedAction):
             target_cols = df.columns.tolist()
 
         if not target_cols:
-            # No text columns → fall back to exact row dedup
             result = df.drop_duplicates(keep=self._keep)
             return result
 
@@ -158,14 +96,10 @@ class FuzzyDeduplicator(ParameterizedAction):
         else:
             return self._ngram_dedup(df, target_cols)
 
-    # ------------------------------------------------------------------ #
-    # Internal strategies
-    # ------------------------------------------------------------------ #
 
     def _fingerprint_dedup(
         self, df: Features, target_cols: List[str]
     ) -> Features:
-        """Group rows by fingerprint, keep one per group."""
         sub = df[target_cols].astype(str)
         fp_series = sub.apply(_row_fingerprint, axis=1)
 
@@ -179,12 +113,6 @@ class FuzzyDeduplicator(ParameterizedAction):
     def _ngram_dedup(
         self, df: Features, target_cols: List[str]
     ) -> Features:
-        """
-        Build character n-grams (n=2) for each row's fingerprint and cluster
-        rows whose Jaccard similarity exceeds ``self._threshold``.
-
-        Falls back to fingerprint method if rapidfuzz is unavailable.
-        """
         try:
             from rapidfuzz import fuzz
         except ImportError:
@@ -198,7 +126,6 @@ class FuzzyDeduplicator(ParameterizedAction):
         fingerprints = sub.apply(_row_fingerprint, axis=1).tolist()
         n = len(fingerprints)
 
-        # Union-find for clustering
         parent = list(range(n))
 
         def find(i: int) -> int:
@@ -212,14 +139,12 @@ class FuzzyDeduplicator(ParameterizedAction):
             if ri != rj:
                 parent[rj] = ri
 
-        # O(n²) comparison — acceptable for typical dataset sizes (< 10k rows)
         for i in range(n):
             for j in range(i + 1, n):
                 sim = fuzz.token_sort_ratio(fingerprints[i], fingerprints[j]) / 100.0
                 if sim >= self._threshold:
                     union(i, j)
 
-        # For each cluster, keep representative row (first or last)
         clusters: Dict[int, List[int]] = {}
         for i in range(n):
             root = find(i)

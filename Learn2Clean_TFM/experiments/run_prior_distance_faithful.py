@@ -1,34 +1,3 @@
-"""
-experiments/run_prior_distance_faithful.py
-
-A FAITHFUL prior-distance DIAGNOSTIC (route (a)). Instead of comparing a dataset to a
-Gaussian proxy (our earlier M1--M4), we compare it to samples drawn from an SCM-based approximation of
-TabPFN's OWN prior --- the random structural-causal-model / random-MLP tabular generator TabPFN is
-meta-trained on. Distance is a two-sample statistic (energy distance, RBF-MMD, C2ST-AUC) between the
-(standardised) cleaned data and a pool of prior samples at matching dimensionality.
-
-This is a DIAGNOSTIC, not a reward (our 8-seed R7-redesign already showed a prior-distance reward is the
-worst arm). It answers two questions, held-out protocol, 8 seeds:
-  (i)  Does cleaning move data TOWARD the prior?  -> dist(best-acc pipeline) - dist(no-clean) < 0 ?
-  (ii) Does prior-proximity TRACK TabPFN accuracy? -> Spearman(dist, TabPFN test acc) across candidate
-       pipelines < 0 ? (closer to prior => higher accuracy)
-
-Why "faithful": both the data and the prior pool are per-set z-standardised, so the distance reflects
-distributional SHAPE (correlations / nonlinear manifold structure) rather than scale --- i.e. how
-"prior-like" the data's structure is, which is what alignment to TabPFN's prior means.
-
-The SCM prior sampler mirrors TabPFN's described prior: a random-depth MLP with random weights /
-activations maps latent noise to `n_feat` correlated features (many independent SCMs pooled).
-
-Feature count is held fixed per dataset (candidates use no dimensionality reduction) so distances are
-comparable across candidate pipelines.
-
-Usage
------
-  PYTHONPATH=src:experiments python experiments/run_prior_distance_faithful.py \
-      --datasets blood_transfusion credit_g hepatitis ionosphere diabetes EEG \
-      --seeds 42 1 2 3 4 5 6 7 --n-cand 12
-"""
 from __future__ import annotations
 import argparse, sys, time
 from pathlib import Path
@@ -42,29 +11,22 @@ from sklearn.metrics import roc_auc_score, accuracy_score
 
 ROOT = Path(__file__).parents[1]
 sys.path.insert(0, str(ROOT / "src")); sys.path.insert(0, str(ROOT / "experiments"))
-# R (operators/load) and G (TabPFN) imported LAZILY in run_one so the SCM+distance core is testable.
 
 OUTER = 0.2
 MCAR = 0.15
 SUBSAMPLE_CAP = 3000
-DIST_CAP = 400          # subsample rows for the O(n^2) two-sample statistics
+DIST_CAP = 400
 
 
-# --------------------------------------------------------------------------------------------------
-# SCM prior sampler --- random-MLP tabular generator approximating TabPFN's prior
-# --------------------------------------------------------------------------------------------------
 def sample_scm_prior(n_rows, n_feat, seed, n_scm=8):
-    """Pool `n_scm` random SCMs (random-depth MLPs, random weights/activations) each emitting `n_feat`
-    correlated features from latent Gaussian noise -> a prior-sample matrix (n_rows, n_feat)."""
     rng = np.random.default_rng(seed)
     per = max(8, n_rows // n_scm + 1)
     outs = []
     for _ in range(n_scm):
         latent = int(rng.integers(2, max(3, n_feat + 1)))
         h = rng.standard_normal((per, latent))
-        for _ in range(int(rng.integers(1, 4))):                     # random depth 1..3
+        for _ in range(int(rng.integers(1, 4))):
             out_dim = int(rng.integers(max(2, n_feat // 2), n_feat * 2 + 1))
-            # proper 1/sqrt(fan_in) init keeps activations O(1) across layers (no overflow)
             W = rng.standard_normal((h.shape[1], out_dim)) * rng.uniform(0.5, 2.0) / np.sqrt(h.shape[1])
             b = rng.standard_normal(out_dim) * rng.uniform(0.0, 0.5)
             h = h @ W + b
@@ -72,7 +34,7 @@ def sample_scm_prior(n_rows, n_feat, seed, n_scm=8):
             if act == 0:
                 h = np.tanh(h)
             elif act == 1:
-                h = np.maximum(h, 0.0)                                # ReLU  (act==2: identity)
+                h = np.maximum(h, 0.0)
         Wf = rng.standard_normal((h.shape[1], n_feat)) * rng.uniform(0.5, 2.0) / np.sqrt(h.shape[1])
         X = h @ Wf + rng.standard_normal((per, n_feat)) * rng.uniform(0.0, 0.3)
         outs.append(X)
@@ -93,9 +55,6 @@ def _subsample(A, cap, rng):
     return A[rng.choice(len(A), cap, replace=False)]
 
 
-# --------------------------------------------------------------------------------------------------
-# Two-sample distances (higher = farther from the prior)
-# --------------------------------------------------------------------------------------------------
 def energy_distance(A, B):
     dab = cdist(A, B).mean(); daa = cdist(A, A).mean(); dbb = cdist(B, B).mean()
     return float(max(2 * dab - daa - dbb, 0.0))
@@ -110,7 +69,6 @@ def rbf_mmd(A, B):
 
 
 def c2st_auc(A, B, seed):
-    """Classifier two-sample test: AUC distinguishing data(1) from prior(0). 0.5=indistinguishable."""
     X = np.vstack([A, B]); y = np.r_[np.ones(len(A)), np.zeros(len(B))]
     try:
         proba = cross_val_predict(RandomForestClassifier(n_estimators=100, random_state=seed, n_jobs=-1),
@@ -121,7 +79,6 @@ def c2st_auc(A, B, seed):
 
 
 def prior_distances(Z_data, seed):
-    """All three faithful prior-distances of standardised data Z (n,d) to an SCM-prior pool."""
     rng = np.random.default_rng(seed)
     d = Z_data.shape[1]
     P = _std(sample_scm_prior(max(len(Z_data), DIST_CAP), d, seed))
@@ -129,9 +86,6 @@ def prior_distances(Z_data, seed):
     return {"energy": energy_distance(A, B), "mmd": rbf_mmd(A, B), "c2st": c2st_auc(A, B, seed)}
 
 
-# --------------------------------------------------------------------------------------------------
-# Diagnostic run
-# --------------------------------------------------------------------------------------------------
 def run_one(name, seed, n_cand):
     import run_saga_richops as R
     import run_c2_tfm_reward_nested as G
@@ -147,7 +101,6 @@ def run_one(name, seed, n_cand):
     Xtr, ytr = Xtr.reset_index(drop=True), ytr.reset_index(drop=True)
     Xte, yte = Xte.reset_index(drop=True), yte.reset_index(drop=True)
 
-    # candidate pipelines: fixed feature count (no dim reduction) so distances are comparable
     pool = [p for p in R.enumerate_pool(True) if p[4] is None]
     rng = np.random.default_rng(seed)
     default = tuple(None if None in o else o[0] for _, o in R.groups_for(True))
@@ -178,9 +131,7 @@ def run_one(name, seed, n_cand):
     dirty = df[df.is_default == 1]
     best = df.loc[df.acc.idxmax()]
     for m in ("energy", "mmd", "c2st"):
-        # (i) cleaning-moves-toward-prior: best-acc pipeline distance minus no-clean distance (<0 = toward)
         row[f"{m}_delta_best_vs_dirty"] = float(best[m] - dirty[m].mean()) if len(dirty) else np.nan
-        # (ii) prior-proximity tracks accuracy: Spearman(dist, acc) across candidates (<0 = faithful)
         rho, _ = spearmanr(df[m], df["acc"])
         row[f"{m}_rho_dist_acc"] = float(rho)
         row[f"{m}_dirty"] = float(dirty[m].mean()) if len(dirty) else np.nan

@@ -1,49 +1,3 @@
-"""
-DataDistortionPenaltyReward — new reward for Learn2Clean V3.
-
-Measures how much the cleaning pipeline *distorts* the original data
-distribution and uses it as the primary reward signal.  A cleaning
-operation that preserves the data's statistical structure while fixing
-quality issues (missing values, duplicates, outliers) scores near 1.
-One that changes the underlying distribution unnecessarily scores near 0.
-
-Why this matters
-----------------
-Classic rewards (accuracy, completeness) do not distinguish between:
-  - Mean imputation  → collapses the missing column's distribution to a spike
-  - KNN imputation   → preserves local density structure
-
-Both may achieve similar ML accuracy on small datasets, but mean imputation
-produces distorted data that misleads downstream users.  This reward
-penalises distribution-changing operations so the agent learns to prefer
-*faithful* cleaning.
-
-Distortion score (5 components, each in [0, 1])
-------------------------------------------------
-1. Wasserstein distance   per-column 1-D Wasserstein, normalised by σ_ref
-2. Jensen-Shannon (JS)    per-column JS divergence on binned histograms
-3. Correlation shift      Frobenius norm of (Σ_clean − Σ_orig) normalised by √n
-4. Variance ratio         mean |log(σ²_clean / σ²_orig)| per column, clipped
-5. Skewness shift         mean |skew_clean − skew_orig| / (1 + |skew_orig|) per col
-
-Total distortion = weighted average of the 5 components (weights configurable).
-Reward           = (1 − distortion) + weight_accuracy × accuracy_score
-
-All sub-scores are clipped to [0, 1] before averaging.
-
-Parameters
-----------
-weight_wasserstein : float   Weight for Wasserstein component (default 0.30)
-weight_js          : float   Weight for JS-divergence component (default 0.25)
-weight_correlation : float   Weight for correlation-shift component (default 0.20)
-weight_variance    : float   Weight for variance-ratio component (default 0.15)
-weight_skewness    : float   Weight for skewness-shift component (default 0.10)
-weight_accuracy    : float   Bonus for ML model accuracy (default 0.0 — pure distortion)
-eval_model         : str     Model used when weight_accuracy > 0
-eval_cv_folds      : int     CV folds for accuracy evaluation
-n_bins             : int     Histogram bins for JS divergence (default 50)
-eps                : float   Numerical stability constant (default 1e-10)
-"""
 
 from __future__ import annotations
 
@@ -64,7 +18,6 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class DistortionComponents:
-    """Per-component breakdown returned after each reward call."""
     wasserstein: float = 0.0
     js_divergence: float = 0.0
     correlation_shift: float = 0.0
@@ -88,11 +41,6 @@ class DistortionComponents:
 
 
 class DataDistortionPenaltyReward(BaseReward):
-    """
-    Reward function that penalises data distribution distortion.
-
-    See module docstring for full description.
-    """
 
     def __init__(
         self,
@@ -107,7 +55,6 @@ class DataDistortionPenaltyReward(BaseReward):
         n_bins: int = 50,
         eps: float = 1e-10,
     ) -> None:
-        # Normalise component weights
         raw = np.array([
             weight_wasserstein,
             weight_js,
@@ -127,14 +74,11 @@ class DataDistortionPenaltyReward(BaseReward):
 
         self._ref_X: Optional[Features] = None
         self._ref_numeric: Optional[pd.DataFrame] = None
-        self._ref_stats: Dict[str, Dict] = {}   # per-column cached stats
+        self._ref_stats: Dict[str, Dict] = {}
         self._ref_corr: Optional[np.ndarray] = None
 
         self._last_components: Optional[DistortionComponents] = None
 
-    # ------------------------------------------------------------------
-    # BaseReward interface
-    # ------------------------------------------------------------------
 
     def reset(self, X_initial: Features, y_initial: OptionalTarget) -> None:
         self._ref_X = X_initial.copy()
@@ -158,30 +102,22 @@ class DataDistortionPenaltyReward(BaseReward):
         cur_numeric = numeric[shared]
         ref_numeric = self._ref_numeric[shared]
 
-        # --- Component 1: Wasserstein ---
         w_score = self._wasserstein_score(cur_numeric, ref_numeric)
 
-        # --- Component 2: Jensen-Shannon divergence ---
         js_score = self._js_score(cur_numeric, ref_numeric)
 
-        # --- Component 3: Correlation structure shift ---
         corr_score = self._correlation_score(cur_numeric, ref_numeric)
 
-        # --- Component 4: Variance ratio ---
         var_score = self._variance_score(cur_numeric, ref_numeric)
 
-        # --- Component 5: Skewness shift ---
         skew_score = self._skewness_score(cur_numeric, ref_numeric)
 
-        # Weighted distortion (higher = more distortion).
-        # NaN components (e.g. constant columns) are treated as maximum distortion.
         components = np.nan_to_num(
             np.array([w_score, js_score, corr_score, var_score, skew_score]),
             nan=1.0,
         )
         total_distortion = float(np.dot(self._w, components))
 
-        # Accuracy bonus
         acc_bonus = 0.0
         if self._w_accuracy > 0:
             acc_bonus = self._accuracy_score(X, y) * self._w_accuracy
@@ -204,21 +140,12 @@ class DataDistortionPenaltyReward(BaseReward):
     def last_components(self) -> Optional[DistortionComponents]:
         return self._last_components
 
-    # ------------------------------------------------------------------
-    # Component computations
-    # ------------------------------------------------------------------
 
     def _wasserstein_score(
         self,
         cur: pd.DataFrame,
         ref: pd.DataFrame,
     ) -> float:
-        """
-        Mean normalised 1-D Wasserstein distance across columns.
-
-        Normalise by reference std so the score is scale-invariant.
-        Cap at 3 σ-units then rescale to [0, 1].
-        """
         distances: List[float] = []
         for col in cur.columns:
             c = cur[col].dropna().values
@@ -228,7 +155,6 @@ class DataDistortionPenaltyReward(BaseReward):
             try:
                 w = float(stats.wasserstein_distance(c, r))
                 ref_std = float(np.std(r)) or 1.0
-                # Normalise: 0 = identical, 1 = 3σ apart (capped)
                 distances.append(min(w / (3.0 * ref_std + self._eps), 1.0))
             except Exception:
                 continue
@@ -239,11 +165,6 @@ class DataDistortionPenaltyReward(BaseReward):
         cur: pd.DataFrame,
         ref: pd.DataFrame,
     ) -> float:
-        """
-        Mean Jensen-Shannon divergence across columns (binned histograms).
-
-        JS divergence ∈ [0, 1] (base-2 log).  1 = completely disjoint.
-        """
         scores: List[float] = []
         for col in cur.columns:
             c = cur[col].dropna().values
@@ -273,12 +194,6 @@ class DataDistortionPenaltyReward(BaseReward):
         cur: pd.DataFrame,
         ref: pd.DataFrame,
     ) -> float:
-        """
-        Frobenius norm of (Σ_clean − Σ_orig) normalised to [0, 1].
-
-        Maximum possible Frobenius norm for a correlation matrix difference
-        is 2√(n_cols) (all entries flip from +1 to −1 or vice-versa).
-        """
         if cur.shape[1] < 2:
             return 0.0
         try:
@@ -286,7 +201,6 @@ class DataDistortionPenaltyReward(BaseReward):
             if cur_corr is None or self._ref_corr is None:
                 return 0.0
             n = cur_corr.shape[0]
-            # Align shapes (columns may differ after dropping)
             if cur_corr.shape != self._ref_corr.shape:
                 ref_corr_local = self._compute_corr_matrix(
                     ref[cur.columns]
@@ -308,12 +222,6 @@ class DataDistortionPenaltyReward(BaseReward):
         cur: pd.DataFrame,
         ref: pd.DataFrame,
     ) -> float:
-        """
-        Mean |log(σ²_clean / σ²_orig)| per column.
-
-        A ratio of 1 (no change) → 0 distortion.
-        A ratio of e² ≈ 7.4× → 2 log-units → clipped to 1.0.
-        """
         ratios: List[float] = []
         for col in cur.columns:
             c = cur[col].dropna().values
@@ -325,7 +233,6 @@ class DataDistortionPenaltyReward(BaseReward):
             if var_r < self._eps:
                 continue
             log_ratio = abs(np.log((var_c + self._eps) / (var_r + self._eps)))
-            # 2 log-units = one order-of-magnitude change → cap at 1
             ratios.append(float(np.clip(log_ratio / 2.0, 0.0, 1.0)))
         return float(np.mean(ratios)) if ratios else 0.0
 
@@ -334,11 +241,6 @@ class DataDistortionPenaltyReward(BaseReward):
         cur: pd.DataFrame,
         ref: pd.DataFrame,
     ) -> float:
-        """
-        Mean normalised skewness change per column.
-
-        |skew_clean − skew_orig| / (1 + |skew_orig|) → [0, ∞), capped at 1.
-        """
         scores: List[float] = []
         for col in cur.columns:
             c = cur[col].dropna().values
@@ -352,7 +254,6 @@ class DataDistortionPenaltyReward(BaseReward):
                     skew_c = float(stats.skew(c))
                     skew_r = float(stats.skew(r))
                 if np.isnan(skew_c):
-                    # Constant column after cleaning → maximum skewness distortion
                     scores.append(1.0)
                     continue
                 if np.isnan(skew_r):
@@ -363,12 +264,8 @@ class DataDistortionPenaltyReward(BaseReward):
                 continue
         return float(np.mean(scores)) if scores else 0.0
 
-    # ------------------------------------------------------------------
-    # Optional accuracy bonus
-    # ------------------------------------------------------------------
 
     def _accuracy_score(self, X: Features, y: OptionalTarget) -> float:
-        """Quick random-forest accuracy for the accuracy bonus."""
         if y is None:
             return 0.0
         try:
@@ -396,9 +293,6 @@ class DataDistortionPenaltyReward(BaseReward):
             logger.debug("accuracy_score error: %s", exc)
             return 0.0
 
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
 
     @staticmethod
     def _compute_column_stats(df: pd.DataFrame) -> Dict[str, Dict]:

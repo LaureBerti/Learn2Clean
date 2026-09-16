@@ -1,29 +1,3 @@
-"""
-experiments/run_h1_retention.py
-
-H1 — does R7's retention/context term open a GENUINE held-out protocol gap?
-Mechanism: TabPFN is in-context, so deleting rows hurts it more than RF. R7 penalises
-row deletion quadratically (context_penalty_power=2); R3 linearly. This only matters when
-cleaning actually REMOVES rows — so we inject OUTLIERS (not MCAR) at increasing rates so
-outlier-removal pipelines shrink the context, on SMALL datasets (every row matters for ICL),
-with NO subsampling (full cleaned set is the TabPFN context).
-
-Pre-registered prediction: as the outlier rate rises, R3 (linear retention) over-prunes rows,
-R7 (quadratic retention) keeps more context, and R7's final TabPFN accuracy pulls ahead of R3.
-If the gap stays flat/zero, the retention term does NOT rescue R7 — also a clean result.
-
-Three arms to DECOMPOSE any gap (matched everything except the named factor):
-  R3       : RF estimator,    retention^1, drift 0.10   (paper baseline)
-  R7lin    : TabPFN estimator, retention^1, drift 0.05   (isolates estimator)
-  R7       : TabPFN estimator, retention^2, drift 0.05   (paper R7; adds the retention term)
-  → R7 − R7lin isolates the RETENTION term; R7lin − R3 isolates the ESTIMATOR.
-All evaluated held-out protocol (sacred outer test), final accuracy with TabPFN; retention of the
-selected pipeline is logged to confirm the mechanism (does R7 keep more rows?).
-
-Usage
------
-  PYTHONPATH=src:experiments python experiments/run_h1_retention.py --seeds 42 1 2 3 4 5 6 7
-"""
 from __future__ import annotations
 
 import argparse
@@ -41,10 +15,9 @@ import run_weight_robustness as W
 from learn2clean_v3.data.error_injection import ErrorProfile, apply_error_profile
 from learn2clean_v3.data.openml_loader import load_dataset
 
-# Small datasets where retention/context binds (all < 1024 train rows → no cap active).
 SMALL = ["hepatitis", "heart_statlog", "ionosphere", "blood_transfusion", "diabetes"]
 OUTLIER_RATES = [0.0, 0.05, 0.10, 0.20, 0.30, 0.40]
-ARMS = {  # name: (estimator, retention_power, drift_coeff)
+ARMS = {
     "R3":    ("rf",     1.0, 0.10),
     "R7lin": ("tabpfn", 1.0, 0.05),
     "R7":    ("tabpfn", 2.0, 0.05),
@@ -63,7 +36,6 @@ def drift_to_dirty(Xc, ref_cols):
 
 
 def select(X_sel, y_sel, pipelines, actions, seed, estimator, power, drift_coeff, ref_cols) -> Tuple:
-    """Return (best_seq, retention_of_best)."""
     n0 = len(X_sel); best, best_s, best_ret = (), -np.inf, 1.0
     for seq in pipelines:
         Xc = G.apply_pipeline(X_sel, y_sel, seq, actions)
@@ -84,7 +56,6 @@ def run_one(ds, rate, seed, pipelines, actions) -> Optional[Dict]:
         X, y, _ = load_dataset(ds, use_cache=True)
     except Exception:
         return None
-    # NO subsampling (small datasets) — inject OUTLIERS at the swept rate (row-removal trigger)
     if rate > 0:
         Xd, yd = apply_error_profile(X, y, ErrorProfile("outlier", rate=rate, k=5.0))
     else:
@@ -105,8 +76,8 @@ def run_one(ds, rate, seed, pipelines, actions) -> Optional[Dict]:
         acc, ece = G.final_test_tabpfn(Xc, y_sel, Xtp, y_test, seed)
         row[f"{name}_acc"], row[f"{name}_ret"] = acc, ret
     row["gap_R7_R3"] = row["R7_acc"] - row["R3_acc"]
-    row["gap_retention_term"] = row["R7_acc"] - row["R7lin_acc"]   # isolates retention
-    row["gap_estimator"] = row["R7lin_acc"] - row["R3_acc"]        # isolates estimator
+    row["gap_retention_term"] = row["R7_acc"] - row["R7lin_acc"]
+    row["gap_estimator"] = row["R7lin_acc"] - row["R3_acc"]
     return row
 
 
@@ -127,7 +98,6 @@ def main(seeds, max_pipelines, output_dir=None) -> None:
                 g = np.nanmean([x["gap_R7_R3"] for x in sub]); rt = np.nanmean([x["R7_ret"] - x["R3_ret"] for x in sub])
                 print(f"  {ds:16} rate={rate:.2f}: gap(R7-R3)={g:+.4f}  Δretention(R7-R3)={rt:+.3f}", flush=True)
     df = pd.DataFrame(rows)
-    # H1 verdict: does gap grow with rate? regress gap on rate.
     print("\n=== H1 — gap(R7-R3) vs outlier rate (pooled over small datasets, 8 seeds) ===")
     by_rate = df.groupby("rate").agg(gap_R7_R3=("gap_R7_R3","mean"), gap_retention=("gap_retention_term","mean"),
                                      gap_estimator=("gap_estimator","mean"),

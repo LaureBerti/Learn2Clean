@@ -2,7 +2,6 @@ import logging
 
 
 class LoggingMixin:
-    """Lazy per-instance logger."""
 
     @property
     def log(self) -> logging.Logger:

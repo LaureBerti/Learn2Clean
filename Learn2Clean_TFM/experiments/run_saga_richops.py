@@ -1,34 +1,8 @@
-"""
-experiments/run_saga_richops.py
-
-Tests the operator-richness hypothesis (dossier ⑥): does extending our pool with SAGA-style
-RICH operators (MICE/IterativeImputer, PCA, SMOTE) close the gap to SAGA? Runs held-out protocol nested
-selection (R7 = TabPFN inner-val acc) over BASE vs RICH pools on the SAGA + a few benchmark
-datasets, reports test TabPFN accuracy AND wall-clock for each pool.
-
-Held-out protocol contract (identical to run_c2_tfm_reward_nested):
-  outer 80/20 (sacred test) → inner 75/25 within train (selection only).
-  Train-context transforms are FIT on the inner-train and APPLIED to inner-val (for selection)
-  and to the sacred test (for the final number). Row-removing ops (outlier, SMOTE) shape the
-  training context only — never the test.
-
-Operators
-  impute   : mean | median | knn | mice(IterativeImputer)
-  outlier  : none | iqr | zscore              (train-rows only)
-  scale    : none | minmax | zscore
-  dimreduce: none | pca(k)                     (fit train, transform test)
-  balance  : none | smote                      (train context only; needs imblearn)
-
-Usage
------
-  PYTHONPATH=src:experiments python experiments/run_saga_richops.py \
-      --datasets EEG Titanic AnimalShelter hepatitis ionosphere diabetes --seeds 42 1 2
-"""
 from __future__ import annotations
 import argparse, sys, time, itertools
 from pathlib import Path
 import numpy as np, pandas as pd
-from sklearn.experimental import enable_iterative_imputer  # noqa: F401
+from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import SimpleImputer, KNNImputer, IterativeImputer
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.decomposition import PCA
@@ -36,24 +10,18 @@ from sklearn.model_selection import train_test_split
 
 ROOT = Path(__file__).parents[1]
 sys.path.insert(0, str(ROOT / "src")); sys.path.insert(0, str(ROOT / "experiments"))
-import run_c2_tfm_reward_nested as G  # reuse TabPFN helpers + split constants
+import run_c2_tfm_reward_nested as G
 
 OUTER, INNER = G.OUTER_TEST_SIZE, G.INNER_VAL_SIZE
 MCAR = 0.15
 
-# pool definition: one op per group max, applied in fixed order.
-# outlier ops come in two flavours: *_rm REMOVE rows (train-context only); winsor/clipz REPLACE
-# values (cap to train-fit bounds, applied to train AND test) — SAGA-style outlier replacement.
-# impute: mean/median; knn k=5/3/10; mice=IterativeImputer(BayesianRidge); iterrf=IterativeImputer(RandomForest, missForest-style)
 IMPUTE = ["mean", "median", "knn", "knn3", "knn10", "mice", "iterrf"]
-OUTLIER = [None, "iqr_rm", "z_rm", "winsor", "clipz"]   # rm = remove rows; winsor/clipz = replace
-TRANSFORM = [None, "boxcox", "yeojohnson", "quantile"]  # power transforms (Box-Cox/Yeo-Johnson) | Quantile→normal
-SCALE = [None, "minmax", "zscore", "log"]              # +log = log1p on shift-to-positive
-DIM = [None, "pca", "rndproj", "sparseproj"]           # PCA | Gaussian | Sparse random projection
+OUTLIER = [None, "iqr_rm", "z_rm", "winsor", "clipz"]
+TRANSFORM = [None, "boxcox", "yeojohnson", "quantile"]
+SCALE = [None, "minmax", "zscore", "log"]
+DIM = [None, "pca", "rndproj", "sparseproj"]
 BAL = [None, "smote"]
-DEDUP = [None, "dedup", "dedup_merge"]                  # drop, or merge dups (majority-vote label)
-# our original "7-op world": mean/median/knn impute, iqr/zscore REMOVAL, minmax/zscore scale; none
-# of the rich ops (mice, knn3/10, outlier-replacement, boxcox, log, pca, smote, dedup).
+DEDUP = [None, "dedup", "dedup_merge"]
 BASE_IMPUTE, BASE_OUTLIER, BASE_TRANSFORM, BASE_SCALE, BASE_DIM, BASE_BAL, BASE_DEDUP = \
     ["mean", "median", "knn"], [None, "iqr_rm", "z_rm"], [None], [None, "minmax", "zscore"], [None], [None], [None]
 
@@ -92,9 +60,6 @@ def _imputer(name):
 
 
 def apply_pipeline(Xtr, ytr, Xte, pipe, seed):
-    """Held-out protocol: fit column transforms on Xtr, apply to Xte. Row ops (outlier removal/dedup/smote)
-    touch train only; value ops (winsor/clipz) cap to train-fit bounds and apply to both.
-    Returns (Xtr_clean, ytr_clean, Xte_clean) as numeric DataFrames, or None on failure."""
     imp, otl, trans, scl, dim, bal, ddp = pipe
     tr = Xtr.select_dtypes(include="number").copy()
     te = Xte.select_dtypes(include="number").copy()
@@ -104,12 +69,10 @@ def apply_pipeline(Xtr, ytr, Xte, pipe, seed):
         return None
     ytr2 = ytr.copy()
     try:
-        # impute (fit train, apply both)
         im = _imputer(imp); im.fit(tr.values)
         tr = pd.DataFrame(im.transform(tr.values), columns=shared, index=tr.index)
         te = pd.DataFrame(im.transform(te.values), columns=shared, index=te.index)
-        # outlier handling — bounds always fit on TRAIN
-        if otl in ("iqr_rm", "z_rm"):                       # REMOVE rows (train only)
+        if otl in ("iqr_rm", "z_rm"):
             if otl == "z_rm":
                 z = (tr - tr.mean()) / (tr.std(ddof=0) + 1e-9)
                 keep = (z.abs() <= 3.0).all(axis=1)
@@ -118,7 +81,7 @@ def apply_pipeline(Xtr, ytr, Xte, pipe, seed):
                 keep = ((tr >= q1 - 1.5 * iqr) & (tr <= q3 + 1.5 * iqr)).all(axis=1)
             if keep.sum() >= max(20, int(0.5 * len(tr))):
                 tr, ytr2 = tr[keep], ytr2[keep]
-        elif otl in ("winsor", "clipz"):                    # REPLACE values (cap; apply to both)
+        elif otl in ("winsor", "clipz"):
             if otl == "winsor":
                 q1, q3 = tr.quantile(.25), tr.quantile(.75); iqr = (q3 - q1) + 1e-9
                 lo, hi = q1 - 1.5 * iqr, q3 + 1.5 * iqr
@@ -127,10 +90,9 @@ def apply_pipeline(Xtr, ytr, Xte, pipe, seed):
                 lo, hi = m - 3.0 * s, m + 3.0 * s
             tr = tr.clip(lower=lo, upper=hi, axis=1)
             te = te.clip(lower=lo, upper=hi, axis=1)
-        # transform (fit train, apply both): Box-Cox needs >0 (shift by train-min); Quantile→normal
         if trans == "boxcox":
             from sklearn.preprocessing import PowerTransformer
-            shift = (tr.min(axis=0)).clip(upper=0.0) * -1.0 + 1e-6   # make train cols strictly positive
+            shift = (tr.min(axis=0)).clip(upper=0.0) * -1.0 + 1e-6
             trp, tep = tr + shift, (te + shift).clip(lower=1e-9)
             pt = PowerTransformer(method="box-cox", standardize=False); pt.fit(trp.values)
             tr = pd.DataFrame(pt.transform(trp.values), columns=shared, index=tr.index)
@@ -147,7 +109,6 @@ def apply_pipeline(Xtr, ytr, Xte, pipe, seed):
             qt.fit(tr.values)
             tr = pd.DataFrame(qt.transform(tr.values), columns=shared, index=tr.index)
             te = pd.DataFrame(qt.transform(te.values), columns=shared, index=te.index)
-        # dedup — drop duplicate train rows; "dedup_merge" resolves label conflicts by majority vote
         if ddp in ("dedup", "dedup_merge"):
             key = tr.round(6)
             if ddp == "dedup_merge":
@@ -156,7 +117,6 @@ def apply_pipeline(Xtr, ytr, Xte, pipe, seed):
             keep = ~key.duplicated()
             if keep.sum() >= max(20, int(0.5 * len(tr))):
                 tr, ytr2 = tr[keep], ytr2[keep]
-        # scale (fit train, apply both); "log" = log1p on shift-to-positive
         if scl == "log":
             shift = (tr.min(axis=0)).clip(upper=0.0) * -1.0
             tr = np.log1p((tr + shift).clip(lower=0.0))
@@ -165,7 +125,6 @@ def apply_pipeline(Xtr, ytr, Xte, pipe, seed):
             sc = MinMaxScaler() if scl == "minmax" else StandardScaler(); sc.fit(tr.values)
             tr = pd.DataFrame(sc.transform(tr.values), columns=shared, index=tr.index)
             te = pd.DataFrame(sc.transform(te.values), columns=shared, index=te.index)
-        # dim reduction (fit train, transform both): PCA | Gaussian | Sparse random projection
         if dim in ("pca", "rndproj", "sparseproj") and tr.shape[1] > 2:
             k = max(2, min(tr.shape[1] - 1, 10))
             if dim == "pca":
@@ -180,7 +139,6 @@ def apply_pipeline(Xtr, ytr, Xte, pipe, seed):
             cols = [f"d{i}" for i in range(k)]
             tr = pd.DataFrame(red.transform(tr.values), columns=cols, index=tr.index)
             te = pd.DataFrame(red.transform(te.values), columns=cols, index=te.index)
-        # smote (train context only)
         if bal == "smote":
             from imblearn.over_sampling import SMOTE
             vc = ytr2.value_counts()
@@ -206,8 +164,6 @@ def enumerate_pool(rich: bool):
 
 
 def groups_for(rich: bool):
-    """Ordered (name, options) per operator group. Greedy search cost scales with the SUM of
-    these sizes (~29 rich), not their PRODUCT (10k+), so adding operators stays cheap + fair."""
     if rich:
         return [("impute", IMPUTE), ("outlier", OUTLIER), ("transform", TRANSFORM),
                 ("scale", SCALE), ("dim", DIM), ("balance", BAL), ("dedup", DEDUP)]
@@ -216,8 +172,6 @@ def groups_for(rich: bool):
 
 
 def _inner_score(pipe, Xi_tr, yi_tr, Xi_val, yi_val, seed, estimator, metric):
-    """Inner-val SELECTION score under estimator ('rf'=R3 / 'tabpfn'=R7) and metric
-    ('acc' / 'f1' / 'ece'). All returned so HIGHER is better → for 'ece' we return -ECE (argmin)."""
     from sklearn.metrics import accuracy_score, f1_score
     out = apply_pipeline(Xi_tr, yi_tr, Xi_val, pipe, seed)
     if out is None:
@@ -239,19 +193,18 @@ def _inner_score(pipe, Xi_tr, yi_tr, Xi_val, yi_val, seed, estimator, metric):
             yi = np.array([idx.get(v, -1) for v in yi_val.values]); ok = yi >= 0
             if prob is None or prob.ndim != 2 or not ok.any():
                 return -1.0
-            return -float(G.compute_ece(yi[ok], prob[ok]))   # maximize -ECE == minimize ECE
+            return -float(G.compute_ece(yi[ok], prob[ok]))
         return float(accuracy_score(yi_val.values, yp))
     except Exception:
         return -1.0
 
 
 def select_pipeline(Xtr_out, ytr_out, rich, seed, estimator, metric, passes=2):
-    """GREEDY COORDINATE SEARCH selecting by (estimator, metric). Returns the chosen pipeline."""
     Xi_tr, Xi_val, yi_tr, yi_val = train_test_split(
         Xtr_out, ytr_out, test_size=INNER, random_state=seed,
         stratify=ytr_out if ytr_out.value_counts().min() >= 2 else None)
     groups = groups_for(rich)
-    cur = tuple(None if None in opts else opts[0] for _, opts in groups)   # impute has no None → 'mean'
+    cur = tuple(None if None in opts else opts[0] for _, opts in groups)
     best_s = _inner_score(cur, Xi_tr, yi_tr, Xi_val, yi_val, seed, estimator, metric); n_eval = 1
     for _ in range(passes):
         improved = False
@@ -269,7 +222,6 @@ def select_pipeline(Xtr_out, ytr_out, rich, seed, estimator, metric, passes=2):
 
 
 def test_metrics(Xtr_out, ytr_out, Xte, yte, pipe, seed):
-    """Deploy TabPFN on the sacred test; return acc, macro-F1, macro-precision, macro-recall, ECE."""
     from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
     nan = {"acc": np.nan, "f1": np.nan, "prec": np.nan, "rec": np.nan, "ece": np.nan}
     out = apply_pipeline(Xtr_out, ytr_out, Xte, pipe, seed)
@@ -283,7 +235,6 @@ def test_metrics(Xtr_out, ytr_out, Xte, yte, pipe, seed):
              "f1": float(f1_score(yt, yp, average="macro")),
              "prec": float(precision_score(yt, yp, average="macro", zero_division=0)),
              "rec": float(recall_score(yt, yp, average="macro", zero_division=0))}
-        # ECE: map true labels to predict_proba columns (sklearn/TabPFN sort classes = np.unique(ytr2))
         classes = list(np.unique(ytr2.values))
         idx = {c: i for i, c in enumerate(classes)}
         yt_idx = np.array([idx.get(v, -1) for v in yt]); ok = yt_idx >= 0
@@ -307,9 +258,6 @@ def run_one(name, seed, cap, select_metrics=("acc", "f1"), rich_only=False,
     Xte, yte = Xte.reset_index(drop=True), yte.reset_index(drop=True)
     row = {"dataset": name, "seed": seed}
 
-    # POOL-DEPENDENT baselines on the rich pool (B-RAND = random pipeline; B-SC = full pipeline).
-    # These MUST reflect the operative pool: B-RAND draws one random operator per group, B-SC turns
-    # every group on (first non-None option). Held-out protocol: fit on train context, deploy TabPFN on test.
     if pool_baselines:
         groups = groups_for(True)
         rng = np.random.default_rng(seed)
@@ -321,8 +269,6 @@ def run_one(name, seed, cap, select_metrics=("acc", "f1"), rich_only=False,
                 row[f"{bname}_{mk}"] = mv
             row[f"{bname}_pipe"] = str(pipe)
 
-    # arms = pool {base,rich} × reward {r3=rf, r7=tabpfn} × selection-metric (select_metrics).
-    # Each arm's winner is DEPLOYED on TabPFN and scored on ALL test metrics (acc/f1/prec/rec/ece).
     pools = [] if skip_greedy else ([("rich", True)] if rich_only else [("base", False), ("rich", True)])
     for tag, rich in pools:
         for rw, est in [("r3", "rf"), ("r7", "tabpfn")]:
@@ -330,12 +276,10 @@ def run_one(name, seed, cap, select_metrics=("acc", "f1"), rich_only=False,
                 t0 = time.time()
                 pipe, n_eval = select_pipeline(Xtr, ytr, rich, seed, est, sm)
                 m = test_metrics(Xtr, ytr, Xte, yte, pipe, seed)
-                key = f"{tag}_{rw}{sm}"                      # e.g. rich_r7ece
+                key = f"{tag}_{rw}{sm}"
                 for mk, mv in m.items():
                     row[f"{key}_{mk}"] = mv
                 row[f"{key}_pipe"] = str(pipe); row[f"{key}_sec"] = time.time() - t0
-    # headline contrasts: R7−R3 under MATCHED selection metric, on the metric it selected for.
-    # Guard on key existence: base arms absent under --rich-only; all greedy arms absent under --skip-greedy.
     for sm, tgt in [("acc", "acc"), ("f1", "f1"), ("ece", "ece")]:
         if sm in select_metrics:
             for tag in ("base", "rich"):
@@ -368,7 +312,6 @@ def main(datasets, seeds, cap, output_dir, select_metrics=("acc", "f1"),
     agg = df.groupby("dataset")[metric_cols].mean().reset_index()
     agg.to_csv(out / "saga_richops_aggregated.csv", index=False)
     print("\n=== RICH pool — R7 vs R3, per selection objective (deployed=TabPFN) ===")
-    # ECE: lower is better, so an R7 advantage is a NEGATIVE delta; flag degenerate (acc collapse).
     for sm in select_metrics:
         dcol = f"rich_{sm}_delta"
         if dcol not in agg:

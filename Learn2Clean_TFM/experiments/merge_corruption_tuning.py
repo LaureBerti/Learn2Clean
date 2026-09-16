@@ -1,5 +1,3 @@
-"""Merge the 4 corruption shards → 13-dataset by-ctype table (verdict ⑦) and the 3 tuning
-shards → complete config table (verdict ⑪). Pure pandas; no TabPFN import."""
 from __future__ import annotations
 from pathlib import Path
 import pandas as pd
@@ -32,7 +30,6 @@ def merge_tuning() -> None:
                     ignore_index=True)
     tun.to_csv(OUT / "tuning_summary_MERGED_perrun.csv", index=False)
     print("\n=== TUNING per-run columns ===", list(tun.columns))
-    # column auto-detect
     rfc = next((c for c in tun.columns if "rf" in c.lower() and "acc" in c.lower()), None)
     tfc = next((c for c in tun.columns if ("tfm" in c.lower() or "tab" in c.lower()) and "acc" in c.lower()), None)
     cfgc = next((c for c in tun.columns if "config" in c.lower()), None)

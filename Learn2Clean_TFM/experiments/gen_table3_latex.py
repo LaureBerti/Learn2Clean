@@ -1,10 +1,6 @@
-"""Generate LaTeX for the held-out protocol 8-seed C2 reward-comparison Table 3
-(venue: acc/F1/ECE ; extended: acc/F1/prec/rec/ECE), mean+-std across seeds,
-bold = better mean per dataset/metric. Reads results_aggregated.csv."""
 import pandas as pd
 
 AGG = "outputs/paper_ready/c2_allmetrics_8seed/results_aggregated.csv"
-# paper display order (D1..D10) + hyphenated texttt names
 ORDER = [("hepatitis","hepatitis"),("heart_statlog","heart-statlog"),
          ("ionosphere","ionosphere"),("blood_transfusion","blood-transfusion"),
          ("diabetes","diabetes"),("credit_g","credit-g"),("kr_vs_kp","kr-vs-kp"),

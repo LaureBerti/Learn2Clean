@@ -1,19 +1,3 @@
-"""
-experiments/run_automl_baselines.py
-
-AutoML end-to-end baselines: AutoGluon and Auto-sklearn 2.0, run on
-the SAME datasets + MCAR-15% corruption + held-out protocol 70/30 split as our main experiments.
-These are END-TO-END systems (their own preprocessing + model), so we report their test
-accuracy alongside our cleaning+TabPFN numbers. Self-contained — does NOT import our TabPFN
-stack (AutoML pins conflicting sklearn versions), so each runs in its own VM/env.
-
-  --method autogluon   : AutoGluon TabularPredictor (handles NaN + categoricals natively)
-  --method autosklearn : Auto-sklearn 2.0 (ordinal-encode categoricals, impute sentinel)
-
-Usage
------
-  PYTHONPATH=src python experiments/run_automl_baselines.py --method autogluon --seeds 42 1 2
-"""
 from __future__ import annotations
 import argparse, sys, time
 from pathlib import Path

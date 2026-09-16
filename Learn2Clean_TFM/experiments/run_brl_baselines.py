@@ -1,42 +1,3 @@
-"""
-experiments/run_brl_baselines.py
-
-B-RL Baselines — RL-trained policies evaluated with TabPFN
-===========================================================
-Computes B-RL-RF and B-RL-TFM rows for the main results table (Table 2).
-
-Design
-------
-For each of the 10 benchmark datasets (MCAR 15%):
-
-  B-RL-RF:
-    Train PPO for N_STEPS using MultiObjectiveReward (RF evaluator).
-    Apply trained policy greedily to the dirty dataset.
-    Evaluate resulting cleaned dataset with TabPFN v2 → accuracy + ECE.
-
-  B-RL-TFM:
-    Start from the B-RL-RF checkpoint (warm start).
-    Fine-tune for N_TFM_STEPS using TFMAwareReward (TabPFN evaluator).
-    Apply fine-tuned policy greedily.
-    Evaluate with TabPFN v2 → accuracy + ECE.
-
-This avoids full TFMAwareReward training (which calls TabPFN at every step
-= extremely slow) while still incorporating TFM feedback at fine-tune time.
-
-Outputs
--------
-  outputs/paper_ready/brl_baselines/
-    results.csv         — (dataset, mode, tabpfn_acc, ece, steps, reward)
-    brl_main.tex        — LaTeX rows for Table 2
-
-Usage
------
-  conda activate l2c_torch
-  cd Learn2Clean_TFM
-  PYTHONPATH=src python experiments/run_brl_baselines.py
-  PYTHONPATH=src python experiments/run_brl_baselines.py --datasets hepatitis ionosphere
-  PYTHONPATH=src python experiments/run_brl_baselines.py --n-steps 3000 --n-tfm-steps 500
-"""
 
 from __future__ import annotations
 
@@ -55,12 +16,9 @@ from sklearn.preprocessing import LabelEncoder
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
 
-# ---------------------------------------------------------------------------
-# Dependency checks
-# ---------------------------------------------------------------------------
 try:
-    import torch  # noqa: F401
-    import stable_baselines3  # noqa: F401
+    import torch
+    import stable_baselines3
     TORCH_SB3_AVAILABLE = True
 except ImportError:
     TORCH_SB3_AVAILABLE = False
@@ -69,7 +27,7 @@ if not TORCH_SB3_AVAILABLE:
     sys.exit("ERROR: Install torch + stable-baselines3 first (conda activate l2c_torch)")
 
 try:
-    import tabpfn as _tp  # noqa: F401
+    import tabpfn as _tp
     TABPFN_AVAILABLE = True
 except ImportError:
     TABPFN_AVAILABLE = False
@@ -90,14 +48,8 @@ from learn2clean_v3.data.openml_loader import BENCHMARK_DATASETS, load_dataset
 from learn2clean_v3.envs.sequential_cleaning_env_v3 import SequentialCleaningEnvV3
 from learn2clean_v3.rewards import MultiObjectiveReward, TFMAwareReward
 
-# Reuse the leak-free nested-protocol evaluation from the accepted C2 harness so the
-# trained-policy (B-RL) rows are evaluated identically to the main experiment: an outer
-# 20% test split is held out and never seen during PPO training or pipeline selection;
-# the SAME selected pipeline is then applied to that test split with transforms fit on the
-# training context only. (Previously PPO trained on the full dirty dataset and the
-# train/test split happened afterwards inside eval_tabpfn(), which leaked the test rows.)
 sys.path.insert(0, str(Path(__file__).parent))
-from run_c2_tfm_reward_nested import (  # noqa: E402
+from run_c2_tfm_reward_nested import (
     apply_pipeline as _apply_pipeline,
     prepare_test_like_train as _prepare_test_like_train,
     final_test_tabpfn as _final_test_tabpfn,
@@ -108,9 +60,6 @@ from run_c2_tfm_reward_nested import (  # noqa: E402
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s | %(message)s")
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
 MCAR_PROFILE = ErrorProfile("mcar", rate=0.15, seed=42)
 OUT_DIR = Path(__file__).parents[1] / "outputs" / "paper_ready" / "brl_baselines"
 
@@ -121,9 +70,6 @@ DS_ORDER = [
 DS_LABELS = ["D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10"]
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 def build_actions() -> List[DataFrameAction]:
     return [
@@ -143,7 +89,6 @@ def train_ppo(
     seed: int = 42,
     verbose: int = 0,
 ) -> PPO:
-    """Train a PPO policy on the given environment."""
     model = PPO(
         "MlpPolicy", env,
         n_steps=256,
@@ -162,11 +107,6 @@ def apply_policy_greedy(
     env: SequentialCleaningEnvV3,
     seed: int = 42,
 ) -> Tuple[pd.DataFrame, Tuple[int, ...]]:
-    """Apply a trained PPO policy greedily.
-
-    Returns the cleaned dataset AND the selected action-index sequence, so the same
-    pipeline can be re-applied leak-free to a held-out test split.
-    """
     obs, _ = env.reset(seed=seed)
     done = False
     pipeline: List[int] = []
@@ -188,13 +128,6 @@ def eval_policy_heldout(
     actions: List[DataFrameAction],
     seed: int = 42,
 ) -> Tuple[float, float, float, float, float]:
-    """Leak-free evaluation of a policy-selected pipeline.
-
-    The pipeline was selected on D_sel only. Here we (1) apply it to D_sel to build the
-    TabPFN training context, (2) apply the SAME pipeline to the untouched D_test with
-    transforms fit on D_sel, and (3) fit TabPFN on the cleaned context and score the
-    held-out test. Returns (accuracy, ECE, macro-F1, macro-precision, macro-recall).
-    """
     X_clean = _apply_pipeline(X_sel, y_sel, pipeline, actions)
     if X_clean is None:
         return _NAN5
@@ -210,11 +143,6 @@ def eval_tabpfn(
     y: pd.Series,
     seed: int = 42,
 ) -> Tuple[float, float, float, float, float]:
-    """Evaluate a single already-cleaned dataset with TabPFN v2 by splitting it
-    internally. NOTE: this splits AFTER cleaning, so it must NOT be used to score a
-    policy-selected pipeline (that would leak the test rows into selection/cleaning);
-    use ``eval_policy_heldout`` for the B-RL rows. Retained only for ad-hoc diagnostics.
-    Returns (accuracy, ECE, macro-F1, macro-precision, macro-recall)."""
     from sklearn.metrics import f1_score, precision_score, recall_score
     from tabpfn import TabPFNClassifier
 
@@ -250,8 +178,6 @@ def eval_tabpfn(
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            # random_state=seed: pin TabPFN's 8-estimator ensemble so seed-to-seed
-            # variance is genuine (else the ensemble draws from the global torch RNG).
             clf = TabPFNClassifier(device="cpu", ignore_pretraining_limits=True,
                                    random_state=seed)
             clf.fit(X_tr, y_tr)
@@ -277,7 +203,6 @@ def eval_tabpfn(
 
 
 def make_latex_rows(results_df: pd.DataFrame) -> str:
-    """Generate LaTeX rows for Table 2 (B-RL-RF and B-RL-TFM accuracy/ECE)."""
     ds_to_label = dict(zip(DS_ORDER, DS_LABELS))
     lines = [
         "% B-RL baselines — accuracy rows",
@@ -301,9 +226,6 @@ def make_latex_rows(results_df: pd.DataFrame) -> str:
     return "\n".join(lines)
 
 
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
 
 def main(
     dataset_names: Optional[List[str]] = None,
@@ -334,10 +256,6 @@ def main(
         print(f"  Loaded: {len(X)} rows × {X.shape[1]} cols  "
               f"| MCAR 15% → missing={X_dirty.isna().mean().mean():.2%}")
 
-        # ── Held-out outer split (leak-free protocol, identical to the C2 nested harness).
-        # PPO is trained and the pipeline selected on D_sel ONLY; the 20% test split is
-        # never seen during training/selection and is cleaned with train-fitted transforms
-        # before the final TabPFN evaluation.
         X_dirty = X_dirty.reset_index(drop=True)
         y_dirty = pd.Series(np.asarray(y_dirty)).reset_index(drop=True)
         if len(X_dirty) > _SUBSAMPLE_CAP:
@@ -357,7 +275,6 @@ def main(
         X_test = X_test.reset_index(drop=True); y_test = y_test.reset_index(drop=True)
         print(f"  Held-out split: D_sel={len(X_sel)} rows, D_test={len(X_test)} rows (test never seen in training/selection)")
 
-        # ── B-RL-RF: train with RF reward ─────────────────────────────────
         print(f"  [B-RL-RF] Training PPO for {n_steps} steps with RF reward …", end=" ", flush=True)
         t_rf = time.time()
         rf_reward = MultiObjectiveReward(
@@ -389,7 +306,6 @@ def main(
                              "steps": n_steps, "train_time_s": float("nan")})
             model_rf = None
 
-        # ── B-RL-TFM: warm-start from RF policy, fine-tune with TFM reward ─
         print(f"  [B-RL-TFM] Fine-tuning for {n_tfm_steps} steps with TFM reward …", end=" ", flush=True)
         t_tfm = time.time()
         tfm_reward = TFMAwareReward(
@@ -403,18 +319,16 @@ def main(
                 actions=actions, reward_fn=tfm_reward, max_steps=3,
             )
             if model_rf is not None:
-                # Warm start: transfer RF model's policy weights
                 model_tfm = PPO(
                     "MlpPolicy", env_tfm,
                     n_steps=256, batch_size=64, n_epochs=4,
-                    learning_rate=1e-4,  # smaller LR for fine-tuning
+                    learning_rate=1e-4,
                     verbose=0, seed=seed,
                 )
-                # Copy policy parameters from RF model
                 model_tfm.policy.load_state_dict(model_rf.policy.state_dict())
             else:
                 model_tfm = train_ppo(env_tfm, n_steps=n_tfm_steps, seed=seed)
-                n_tfm_steps_actual = 0  # already trained from scratch
+                n_tfm_steps_actual = 0
 
             model_tfm.learn(total_timesteps=n_tfm_steps)
             _, pipe_tfm = apply_policy_greedy(model_tfm, env_tfm, seed=seed)
@@ -438,7 +352,6 @@ def main(
 
         print(f"  Dataset total: {time.time()-t0:.0f}s")
 
-    # ── Save results ──────────────────────────────────────────────────────────
     if not results:
         print("\nNo results to save.")
         return
@@ -461,7 +374,6 @@ def main(
     print(f"Total time: {time.time()-t0_total:.0f}s")
 
 
-# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

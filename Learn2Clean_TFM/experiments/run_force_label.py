@@ -1,27 +1,3 @@
-"""
-experiments/run_force_label.py
-
-force_label follow-up — disentangles "label cleaning doesn't help" from "label cleaning
-helps but the noisy validation can't SELECT it." Motivated by the sweep finding: under
-label noise the inner-val accuracy signal is itself corrupted, so the reward never picks
-the mislabel-removal operator (label_used≈0). Here we BYPASS the reward and FORCE label
-cleaning, then measure downstream test accuracy on the clean test labels.
-
-Held-out protocol: label noise injected on training labels (y_sel) only; test labels are ground
-truth. Dose-response over label-noise rate, all 13 datasets (OpenML 10 + SAGA 3).
-
-Arms:
-  no_clean    : raw noisy D_sel → TabPFN
-  R7          : TabPFN-reward over base ops (reward-selected; does NOT pick label cleaning)
-  force_lblO  : FORCE LabelCleaner only (remove likely-mislabeled rows), then TabPFN
-  force_lbl   : FORCE LabelCleaner, then R7-select a base pipeline on the cleaned set
-Key gap: force_lbl(O) − no_clean under label noise ⇒ does removing in-context label noise
-help TabPFN, independent of whether the reward could find it?
-
-Usage
------
-  PYTHONPATH=src:experiments python experiments/run_force_label.py --datasets EEG Titanic --seeds 42 1 2
-"""
 from __future__ import annotations
 
 import argparse
@@ -60,13 +36,11 @@ def run_one(ds, rate, seed, base_pipes) -> Optional[Dict]:
         y_sel = inject_label_noise(y_sel, rate, seed)
 
     row = {"dataset": ds, "rate": rate, "seed": seed}
-    # no_clean + reward-selected R7
     row.update({f"no_clean_{k}": v for k, v in
                 {"tabpfn": eval_arm(X_sel, y_sel, X_test, y_test, (), BASE, seed)["tabpfn"]}.items()})
     best_r7 = select(X_sel, y_sel, base_pipes, BASE, seed, "tabpfn")
     row["R7_tabpfn"] = eval_arm(X_sel, y_sel, X_test, y_test, best_r7, BASE, seed)["tabpfn"]
 
-    # FORCE label cleaning (bypass reward)
     X_lc = LabelCleaner()(X_sel, y_sel)
     try:
         y_lc = y_sel.loc[X_lc.index]

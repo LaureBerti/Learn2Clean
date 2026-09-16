@@ -1,16 +1,3 @@
-"""
-experiments/wr_merge_analyze.py
-
-Merge the per-shard pool_metrics.csv files (from the weight-robustness fan-out)
-and run the full sweep + Pareto + summary once over the combined 10-dataset pool.
-Pure analysis — no model calls.
-
-Usage
------
-  PYTHONPATH=src:experiments python experiments/wr_merge_analyze.py \
-      --shards outputs/paper_ready/wr_vm_results/wr_shard_0 ... \
-      --out outputs/paper_ready/weight_robustness_merged
-"""
 from __future__ import annotations
 
 import argparse
