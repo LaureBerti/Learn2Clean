@@ -227,6 +227,111 @@ def make_latex_rows(results_df: pd.DataFrame) -> str:
 
 
 
+def run_one_cell(
+    ds_name: str,
+    seed: int,
+    n_steps: int = 5_000,
+    n_tfm_steps: int = 1_000,
+    actions: Optional[List[DataFrameAction]] = None,
+) -> List[Dict]:
+    if actions is None:
+        actions = build_actions()
+    results: List[Dict] = []
+    t0 = time.time()
+    try:
+        X, y, spec = load_dataset(ds_name, use_cache=True)
+    except Exception as exc:
+        print(f"  [{ds_name} seed{seed}] SKIP load failed: {exc}", flush=True)
+        return results
+
+    X_dirty, y_dirty = apply_error_profile(X, y, MCAR_PROFILE)
+    X_dirty = X_dirty.reset_index(drop=True)
+    y_dirty = pd.Series(np.asarray(y_dirty)).reset_index(drop=True)
+    if len(X_dirty) > _SUBSAMPLE_CAP:
+        X_dirty, _, y_dirty, _ = train_test_split(
+            X_dirty, y_dirty, train_size=_SUBSAMPLE_CAP,
+            random_state=seed, stratify=y_dirty)
+        X_dirty = X_dirty.reset_index(drop=True)
+        y_dirty = y_dirty.reset_index(drop=True)
+    try:
+        X_sel, X_test, y_sel, y_test = train_test_split(
+            X_dirty, y_dirty, test_size=_OUTER_TEST_SIZE,
+            random_state=seed, stratify=y_dirty)
+    except ValueError:
+        X_sel, X_test, y_sel, y_test = train_test_split(
+            X_dirty, y_dirty, test_size=_OUTER_TEST_SIZE, random_state=seed)
+    X_sel = X_sel.reset_index(drop=True); y_sel = y_sel.reset_index(drop=True)
+    X_test = X_test.reset_index(drop=True); y_test = y_test.reset_index(drop=True)
+
+    t_rf = time.time()
+    rf_reward = MultiObjectiveReward(
+        weight_accuracy=0.5, weight_retention=0.3, weight_quality=0.2,
+        drift_penalty_coeff=0.1, eval_model="random_forest",
+        eval_metric=spec.eval_metric, eval_cv_folds=1,
+    )
+    model_rf = None
+    try:
+        env_rf = SequentialCleaningEnvV3(
+            X=X_sel, y=y_sel, actions=actions, reward_fn=rf_reward, max_steps=3)
+        model_rf = train_ppo(env_rf, n_steps=n_steps, seed=seed)
+        _, pipe_rf = apply_policy_greedy(model_rf, env_rf, seed=seed)
+        acc_rf, ece_rf, f1_rf, prec_rf, rec_rf = eval_policy_heldout(
+            pipe_rf, X_sel, y_sel, X_test, y_test, actions, seed=seed)
+        results.append({
+            "dataset": ds_name, "mode": "rf",
+            "tabpfn_acc": acc_rf, "ece": ece_rf,
+            "f1": f1_rf, "prec": prec_rf, "rec": rec_rf,
+            "steps": n_steps, "train_time_s": round(time.time() - t_rf, 1),
+        })
+    except Exception as exc:
+        print(f"  [{ds_name} seed{seed}] RF FAILED: {exc}", flush=True)
+        results.append({"dataset": ds_name, "mode": "rf",
+                        "tabpfn_acc": float("nan"), "ece": float("nan"),
+                        "f1": float("nan"), "prec": float("nan"), "rec": float("nan"),
+                        "steps": n_steps, "train_time_s": float("nan")})
+        model_rf = None
+
+    t_tfm = time.time()
+    tfm_reward = TFMAwareReward(
+        weight_accuracy=0.50, weight_retention=0.35, weight_quality=0.15,
+        drift_penalty_coeff=0.05, eval_model="tabpfn",
+        eval_metric=spec.eval_metric,
+    )
+    try:
+        env_tfm = SequentialCleaningEnvV3(
+            X=X_sel, y=y_sel, actions=actions, reward_fn=tfm_reward, max_steps=3)
+        if model_rf is not None:
+            model_tfm = PPO(
+                "MlpPolicy", env_tfm,
+                n_steps=256, batch_size=64, n_epochs=4,
+                learning_rate=1e-4, verbose=0, seed=seed,
+            )
+            model_tfm.policy.load_state_dict(model_rf.policy.state_dict())
+        else:
+            model_tfm = train_ppo(env_tfm, n_steps=n_tfm_steps, seed=seed)
+        model_tfm.learn(total_timesteps=n_tfm_steps)
+        _, pipe_tfm = apply_policy_greedy(model_tfm, env_tfm, seed=seed)
+        acc_tfm, ece_tfm, f1_tfm, prec_tfm, rec_tfm = eval_policy_heldout(
+            pipe_tfm, X_sel, y_sel, X_test, y_test, actions, seed=seed)
+        results.append({
+            "dataset": ds_name, "mode": "tfm",
+            "tabpfn_acc": acc_tfm, "ece": ece_tfm,
+            "f1": f1_tfm, "prec": prec_tfm, "rec": rec_tfm,
+            "steps": n_steps + n_tfm_steps,
+            "train_time_s": round(time.time() - t_tfm, 1),
+        })
+    except Exception as exc:
+        print(f"  [{ds_name} seed{seed}] TFM FAILED: {exc}", flush=True)
+        results.append({"dataset": ds_name, "mode": "tfm",
+                        "tabpfn_acc": float("nan"), "ece": float("nan"),
+                        "f1": float("nan"), "prec": float("nan"), "rec": float("nan"),
+                        "steps": n_steps + n_tfm_steps, "train_time_s": float("nan")})
+
+    print(f"  [{ds_name} seed{seed}] done in {time.time()-t0:.0f}s "
+          f"(D_sel={len(X_sel)}, D_test={len(X_test)}, held-out)", flush=True)
+    return results
+
+
 def main(
     dataset_names: Optional[List[str]] = None,
     n_steps: int = 5_000,
@@ -243,114 +348,8 @@ def main(
 
     for ds_name in dataset_names:
         print(f"\n{'─'*60}")
-        print(f"  Dataset: {ds_name}")
-        t0 = time.time()
-
-        try:
-            X, y, spec = load_dataset(ds_name, use_cache=True)
-        except Exception as exc:
-            print(f"  [SKIP] Load failed: {exc}")
-            continue
-
-        X_dirty, y_dirty = apply_error_profile(X, y, MCAR_PROFILE)
-        print(f"  Loaded: {len(X)} rows × {X.shape[1]} cols  "
-              f"| MCAR 15% → missing={X_dirty.isna().mean().mean():.2%}")
-
-        X_dirty = X_dirty.reset_index(drop=True)
-        y_dirty = pd.Series(np.asarray(y_dirty)).reset_index(drop=True)
-        if len(X_dirty) > _SUBSAMPLE_CAP:
-            X_dirty, _, y_dirty, _ = train_test_split(
-                X_dirty, y_dirty, train_size=_SUBSAMPLE_CAP,
-                random_state=seed, stratify=y_dirty)
-            X_dirty = X_dirty.reset_index(drop=True)
-            y_dirty = y_dirty.reset_index(drop=True)
-        try:
-            X_sel, X_test, y_sel, y_test = train_test_split(
-                X_dirty, y_dirty, test_size=_OUTER_TEST_SIZE,
-                random_state=seed, stratify=y_dirty)
-        except ValueError:
-            X_sel, X_test, y_sel, y_test = train_test_split(
-                X_dirty, y_dirty, test_size=_OUTER_TEST_SIZE, random_state=seed)
-        X_sel = X_sel.reset_index(drop=True); y_sel = y_sel.reset_index(drop=True)
-        X_test = X_test.reset_index(drop=True); y_test = y_test.reset_index(drop=True)
-        print(f"  Held-out split: D_sel={len(X_sel)} rows, D_test={len(X_test)} rows (test never seen in training/selection)")
-
-        print(f"  [B-RL-RF] Training PPO for {n_steps} steps with RF reward …", end=" ", flush=True)
-        t_rf = time.time()
-        rf_reward = MultiObjectiveReward(
-            weight_accuracy=0.5, weight_retention=0.3, weight_quality=0.2,
-            drift_penalty_coeff=0.1, eval_model="random_forest",
-            eval_metric=spec.eval_metric, eval_cv_folds=1,
-        )
-        try:
-            env_rf = SequentialCleaningEnvV3(
-                X=X_sel, y=y_sel,
-                actions=actions, reward_fn=rf_reward, max_steps=3,
-            )
-            model_rf = train_ppo(env_rf, n_steps=n_steps, seed=seed)
-            _, pipe_rf = apply_policy_greedy(model_rf, env_rf, seed=seed)
-            acc_rf, ece_rf, f1_rf, prec_rf, rec_rf = eval_policy_heldout(
-                pipe_rf, X_sel, y_sel, X_test, y_test, actions, seed=seed)
-            print(f"acc={acc_rf:.4f}  F1={f1_rf:.4f}  ECE={ece_rf:.4f}  ({time.time()-t_rf:.0f}s)")
-            results.append({
-                "dataset": ds_name, "mode": "rf",
-                "tabpfn_acc": acc_rf, "ece": ece_rf,
-                "f1": f1_rf, "prec": prec_rf, "rec": rec_rf,
-                "steps": n_steps, "train_time_s": round(time.time() - t_rf, 1),
-            })
-        except Exception as exc:
-            print(f"FAILED: {exc}")
-            results.append({"dataset": ds_name, "mode": "rf",
-                             "tabpfn_acc": float("nan"), "ece": float("nan"),
-                             "f1": float("nan"), "prec": float("nan"), "rec": float("nan"),
-                             "steps": n_steps, "train_time_s": float("nan")})
-            model_rf = None
-
-        print(f"  [B-RL-TFM] Fine-tuning for {n_tfm_steps} steps with TFM reward …", end=" ", flush=True)
-        t_tfm = time.time()
-        tfm_reward = TFMAwareReward(
-            weight_accuracy=0.50, weight_retention=0.35, weight_quality=0.15,
-            drift_penalty_coeff=0.05, eval_model="tabpfn",
-            eval_metric=spec.eval_metric,
-        )
-        try:
-            env_tfm = SequentialCleaningEnvV3(
-                X=X_sel, y=y_sel,
-                actions=actions, reward_fn=tfm_reward, max_steps=3,
-            )
-            if model_rf is not None:
-                model_tfm = PPO(
-                    "MlpPolicy", env_tfm,
-                    n_steps=256, batch_size=64, n_epochs=4,
-                    learning_rate=1e-4,
-                    verbose=0, seed=seed,
-                )
-                model_tfm.policy.load_state_dict(model_rf.policy.state_dict())
-            else:
-                model_tfm = train_ppo(env_tfm, n_steps=n_tfm_steps, seed=seed)
-                n_tfm_steps_actual = 0
-
-            model_tfm.learn(total_timesteps=n_tfm_steps)
-            _, pipe_tfm = apply_policy_greedy(model_tfm, env_tfm, seed=seed)
-            acc_tfm, ece_tfm, f1_tfm, prec_tfm, rec_tfm = eval_policy_heldout(
-                pipe_tfm, X_sel, y_sel, X_test, y_test, actions, seed=seed)
-            print(f"acc={acc_tfm:.4f}  F1={f1_tfm:.4f}  ECE={ece_tfm:.4f}  ({time.time()-t_tfm:.0f}s)")
-            results.append({
-                "dataset": ds_name, "mode": "tfm",
-                "tabpfn_acc": acc_tfm, "ece": ece_tfm,
-                "f1": f1_tfm, "prec": prec_tfm, "rec": rec_tfm,
-                "steps": n_steps + n_tfm_steps,
-                "train_time_s": round(time.time() - t_tfm, 1),
-            })
-        except Exception as exc:
-            print(f"FAILED: {exc}")
-            results.append({"dataset": ds_name, "mode": "tfm",
-                             "tabpfn_acc": float("nan"), "ece": float("nan"),
-                             "f1": float("nan"), "prec": float("nan"), "rec": float("nan"),
-                             "steps": n_steps + n_tfm_steps,
-                             "train_time_s": float("nan")})
-
-        print(f"  Dataset total: {time.time()-t0:.0f}s")
+        print(f"  Dataset: {ds_name} (seed {seed})")
+        results.extend(run_one_cell(ds_name, seed, n_steps, n_tfm_steps, actions))
 
     if not results:
         print("\nNo results to save.")
