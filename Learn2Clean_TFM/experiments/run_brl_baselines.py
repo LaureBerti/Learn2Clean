@@ -90,6 +90,21 @@ from learn2clean_v3.data.openml_loader import BENCHMARK_DATASETS, load_dataset
 from learn2clean_v3.envs.sequential_cleaning_env_v3 import SequentialCleaningEnvV3
 from learn2clean_v3.rewards import MultiObjectiveReward, TFMAwareReward
 
+# Reuse the leak-free nested-protocol evaluation from the accepted C2 harness so the
+# trained-policy (B-RL) rows are evaluated identically to the main experiment: an outer
+# 20% test split is held out and never seen during PPO training or pipeline selection;
+# the SAME selected pipeline is then applied to that test split with transforms fit on the
+# training context only. (Previously PPO trained on the full dirty dataset and the
+# train/test split happened afterwards inside eval_tabpfn(), which leaked the test rows.)
+sys.path.insert(0, str(Path(__file__).parent))
+from run_c2_tfm_reward_nested import (  # noqa: E402
+    apply_pipeline as _apply_pipeline,
+    prepare_test_like_train as _prepare_test_like_train,
+    final_test_tabpfn as _final_test_tabpfn,
+    OUTER_TEST_SIZE as _OUTER_TEST_SIZE,
+    SUBSAMPLE_CAP as _SUBSAMPLE_CAP,
+)
+
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s | %(message)s")
 logger = logging.getLogger(__name__)
 
@@ -146,17 +161,45 @@ def apply_policy_greedy(
     model: PPO,
     env: SequentialCleaningEnvV3,
     seed: int = 42,
-) -> pd.DataFrame:
-    """Apply a trained PPO policy greedily and return the cleaned dataset."""
+) -> Tuple[pd.DataFrame, Tuple[int, ...]]:
+    """Apply a trained PPO policy greedily.
+
+    Returns the cleaned dataset AND the selected action-index sequence, so the same
+    pipeline can be re-applied leak-free to a held-out test split.
+    """
     obs, _ = env.reset(seed=seed)
     done = False
+    pipeline: List[int] = []
     while not done:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             action, _ = model.predict(obs, deterministic=True)
-        obs, _, terminated, truncated, _ = env.step(int(action))
+        a = int(action)
+        pipeline.append(a)
+        obs, _, terminated, truncated, _ = env.step(a)
         done = terminated or truncated
-    return env.current_X.copy()
+    return env.current_X.copy(), tuple(pipeline)
+
+
+def eval_policy_heldout(
+    pipeline: Tuple[int, ...],
+    X_sel: pd.DataFrame, y_sel: pd.Series,
+    X_test: pd.DataFrame, y_test: pd.Series,
+    actions: List[DataFrameAction],
+    seed: int = 42,
+) -> Tuple[float, float, float, float, float]:
+    """Leak-free evaluation of a policy-selected pipeline.
+
+    The pipeline was selected on D_sel only. Here we (1) apply it to D_sel to build the
+    TabPFN training context, (2) apply the SAME pipeline to the untouched D_test with
+    transforms fit on D_sel, and (3) fit TabPFN on the cleaned context and score the
+    held-out test. Returns (accuracy, ECE, macro-F1, macro-precision, macro-recall).
+    """
+    X_clean = _apply_pipeline(X_sel, y_sel, pipeline, actions)
+    if X_clean is None:
+        return _NAN5
+    X_test_prep = _prepare_test_like_train(X_sel, X_test, pipeline)
+    return _final_test_tabpfn(X_clean, y_sel, X_test_prep, y_test, seed)
 
 
 _NAN5 = (float("nan"),) * 5
@@ -167,7 +210,10 @@ def eval_tabpfn(
     y: pd.Series,
     seed: int = 42,
 ) -> Tuple[float, float, float, float, float]:
-    """Evaluate cleaned dataset with TabPFN v2.
+    """Evaluate a single already-cleaned dataset with TabPFN v2 by splitting it
+    internally. NOTE: this splits AFTER cleaning, so it must NOT be used to score a
+    policy-selected pipeline (that would leak the test rows into selection/cleaning);
+    use ``eval_policy_heldout`` for the B-RL rows. Retained only for ad-hoc diagnostics.
     Returns (accuracy, ECE, macro-F1, macro-precision, macro-recall)."""
     from sklearn.metrics import f1_score, precision_score, recall_score
     from tabpfn import TabPFNClassifier
@@ -288,6 +334,29 @@ def main(
         print(f"  Loaded: {len(X)} rows × {X.shape[1]} cols  "
               f"| MCAR 15% → missing={X_dirty.isna().mean().mean():.2%}")
 
+        # ── Held-out outer split (leak-free protocol, identical to the C2 nested harness).
+        # PPO is trained and the pipeline selected on D_sel ONLY; the 20% test split is
+        # never seen during training/selection and is cleaned with train-fitted transforms
+        # before the final TabPFN evaluation.
+        X_dirty = X_dirty.reset_index(drop=True)
+        y_dirty = pd.Series(np.asarray(y_dirty)).reset_index(drop=True)
+        if len(X_dirty) > _SUBSAMPLE_CAP:
+            X_dirty, _, y_dirty, _ = train_test_split(
+                X_dirty, y_dirty, train_size=_SUBSAMPLE_CAP,
+                random_state=seed, stratify=y_dirty)
+            X_dirty = X_dirty.reset_index(drop=True)
+            y_dirty = y_dirty.reset_index(drop=True)
+        try:
+            X_sel, X_test, y_sel, y_test = train_test_split(
+                X_dirty, y_dirty, test_size=_OUTER_TEST_SIZE,
+                random_state=seed, stratify=y_dirty)
+        except ValueError:
+            X_sel, X_test, y_sel, y_test = train_test_split(
+                X_dirty, y_dirty, test_size=_OUTER_TEST_SIZE, random_state=seed)
+        X_sel = X_sel.reset_index(drop=True); y_sel = y_sel.reset_index(drop=True)
+        X_test = X_test.reset_index(drop=True); y_test = y_test.reset_index(drop=True)
+        print(f"  Held-out split: D_sel={len(X_sel)} rows, D_test={len(X_test)} rows (test never seen in training/selection)")
+
         # ── B-RL-RF: train with RF reward ─────────────────────────────────
         print(f"  [B-RL-RF] Training PPO for {n_steps} steps with RF reward …", end=" ", flush=True)
         t_rf = time.time()
@@ -298,12 +367,13 @@ def main(
         )
         try:
             env_rf = SequentialCleaningEnvV3(
-                X=X_dirty, y=y_dirty,
+                X=X_sel, y=y_sel,
                 actions=actions, reward_fn=rf_reward, max_steps=3,
             )
             model_rf = train_ppo(env_rf, n_steps=n_steps, seed=seed)
-            X_rl_rf = apply_policy_greedy(model_rf, env_rf, seed=seed)
-            acc_rf, ece_rf, f1_rf, prec_rf, rec_rf = eval_tabpfn(X_rl_rf, env_rf.current_y, seed=seed)
+            _, pipe_rf = apply_policy_greedy(model_rf, env_rf, seed=seed)
+            acc_rf, ece_rf, f1_rf, prec_rf, rec_rf = eval_policy_heldout(
+                pipe_rf, X_sel, y_sel, X_test, y_test, actions, seed=seed)
             print(f"acc={acc_rf:.4f}  F1={f1_rf:.4f}  ECE={ece_rf:.4f}  ({time.time()-t_rf:.0f}s)")
             results.append({
                 "dataset": ds_name, "mode": "rf",
@@ -329,7 +399,7 @@ def main(
         )
         try:
             env_tfm = SequentialCleaningEnvV3(
-                X=X_dirty, y=y_dirty,
+                X=X_sel, y=y_sel,
                 actions=actions, reward_fn=tfm_reward, max_steps=3,
             )
             if model_rf is not None:
@@ -347,8 +417,9 @@ def main(
                 n_tfm_steps_actual = 0  # already trained from scratch
 
             model_tfm.learn(total_timesteps=n_tfm_steps)
-            X_rl_tfm = apply_policy_greedy(model_tfm, env_tfm, seed=seed)
-            acc_tfm, ece_tfm, f1_tfm, prec_tfm, rec_tfm = eval_tabpfn(X_rl_tfm, env_tfm.current_y, seed=seed)
+            _, pipe_tfm = apply_policy_greedy(model_tfm, env_tfm, seed=seed)
+            acc_tfm, ece_tfm, f1_tfm, prec_tfm, rec_tfm = eval_policy_heldout(
+                pipe_tfm, X_sel, y_sel, X_test, y_test, actions, seed=seed)
             print(f"acc={acc_tfm:.4f}  F1={f1_tfm:.4f}  ECE={ece_tfm:.4f}  ({time.time()-t_tfm:.0f}s)")
             results.append({
                 "dataset": ds_name, "mode": "tfm",
